@@ -26,8 +26,8 @@
         "zh": "Git 分支切换器"
       },
       "description": {
-        "en": "A composer chip that shows the current git branch of the session working directory and switches local or remote-tracking branches from a popup menu, with one-click git fetch and confirmation before switching on a dirty tree.",
-        "zh": "在输入框工具行显示当前 git 分支的胶囊按钮，弹出菜单一键切换本地或远端跟踪分支，支持一键同步远端分支；工作区不干净或目标分支缺失时先弹确认。"
+        "en": "A composer chip that shows the current git branch of the session working directory and switches local or remote-tracking branches from a TRAE-style popup menu, with one-click git fetch, create-branch-and-switch, and confirmation before switching on a dirty tree.",
+        "zh": "在输入框工具行显示当前 git 分支的胶囊按钮，TRAE 风格菜单一键切换本地或远端跟踪分支，支持一键同步远端分支、新建分支并立即切换；工作区不干净时先弹确认。"
       },
       "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJub25lIj4KICA8cGF0aCBkPSJNNC41IDJhMiAyIDAgMSAwIC45IDMuNzlBMiAyIDAgMCAwIDQuNSAyWm0wIDQuNnYyLjhhMy42IDMuNiAwIDAgMCAzLjYgMy42aC40YTIgMiAwIDEgMCAwLTEuMmgtLjRhMi40IDIuNCAwIDAgMS0yLjQtMi40VjYuNmEyIDIgMCAxIDAtMS4yIDBaTTExLjUgOS40YTIgMiAwIDEgMCAuOS4yMUEyIDIgMCAwIDAgMTEuNSA5LjRaIiBmaWxsPSJjdXJyZW50Q29sb3IiLz4KPC9zdmc+Cg==",
       "author": "LuoBiao (milestone-17)",
@@ -46,6 +46,18 @@
         ]
       },
       "versions": [
+        {
+          "version": "0.3.0",
+          "publishTimestamp": 1793899200,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
+            "commit": "c8d923f3f26cf91d8c984bdb203da87696ad67c0"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.2 <0.3.0 || >=0.3.0-rc.1 <0.4.0-0"
+          }
+        },
         {
           "version": "0.2.3",
           "publishTimestamp": 1793894400,
