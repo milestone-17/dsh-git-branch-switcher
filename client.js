@@ -190,17 +190,73 @@ window.__ModuleLoader__.load({
 			})
 		]);
 		let $checkout_result$value;
-		const sessionIdCodec = () => ({
-			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#SessionId",
-			create: () => zod.z.string(),
-			jsonSchema: { type: "string" }
+		const $status_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation.")
 		});
-		const branchNameCodec = () => ({
+		const $checkout_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"branch": zod.z.string().describe("Local branch to switch to."),
+			"confirmed": zod.z.boolean().optional().describe("Set after the user confirmed a dirty tree or missing target.")
+		});
+		const $status_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string()
+		});
+		const $checkout_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"branch": zod.z.string(),
+			"confirmed": zod.z.boolean().optional()
+		});
+		const statusRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchName",
-			create: () => zod.z.string(),
-			jsonSchema: { type: "string" }
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StatusRequest",
+			create: $status_request,
+			jsonSchema: {
+				type: "object",
+				properties: { sessionId: { type: "string", description: "Session identity of the calling conversation." } },
+				required: ["sessionId"],
+				additionalProperties: true
+			}
+		});
+		const statusRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StatusRequest",
+			create: $status_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: { sessionId: { type: "string" } },
+				required: ["sessionId"],
+				additionalProperties: false
+			}
+		});
+		const checkoutRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CheckoutRequest",
+			create: $checkout_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					branch: { type: "string", description: "Local branch to switch to." },
+					confirmed: { type: "boolean", description: "Set after the user confirmed a dirty tree or missing target." }
+				},
+				required: ["sessionId", "branch"],
+				additionalProperties: true
+			}
+		});
+		const checkoutRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CheckoutRequest",
+			create: $checkout_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					branch: { type: "string" },
+					confirmed: { type: "boolean" }
+				},
+				required: ["sessionId", "branch"],
+				additionalProperties: false
+			}
 		});
 		const TYPERT_REMOTE = createTypertRemoteInfo({
 			package: "@luochbiao/dsh-git-branch-switcher",
@@ -210,10 +266,11 @@ window.__ModuleLoader__.load({
 					description: "Read the repository state around the session's working directory.",
 					invocation: { kind: "direct" },
 					parameters: [{
-						name: "sessionId",
-						description: "displayed Session identity.",
+						name: "request",
+						description: "request object carrying the session identity.",
 						source: "json",
-						codec: sessionIdCodec()
+						codec: statusRequestCodec(),
+						strictCodec: statusRequestStrictCodec()
 					}],
 					cancellation: { parameter: "signal" },
 					result: {
@@ -230,23 +287,11 @@ window.__ModuleLoader__.load({
 					invocation: { kind: "direct" },
 					parameters: [
 						{
-							name: "sessionId",
-							description: "displayed Session identity.",
+							name: "request",
+							description: "request object carrying the session identity, the target branch, and the confirmation flag.",
 							source: "json",
-							codec: sessionIdCodec()
-						},
-						{
-							name: "branch",
-							description: "local branch name to switch to.",
-							source: "json",
-							codec: branchNameCodec()
-						},
-						{
-							name: "confirmed",
-							description: "set after the user confirmed a dirty tree or missing target.",
-							source: "json",
-							acceptsUndefined: true,
-							codec: branchNameCodec()
+							codec: checkoutRequestCodec(),
+							strictCodec: checkoutRequestStrictCodec()
 						}
 					],
 					cancellation: { parameter: "signal" },
@@ -402,10 +447,14 @@ window.__ModuleLoader__.load({
 			const rootRef = React.useRef(void 0);
 			const triggerRef = React.useRef(void 0);
 			const menuRef = React.useRef(void 0);
+			const requestIdRef = React.useRef(0);
 			const refresh = React.useCallback(async () => {
+				const id = ++requestIdRef.current;
 				try {
-					setStatus(await call("status", { sessionId }));
+					const next = await call("status", { sessionId });
+					if (id === requestIdRef.current) setStatus(next);
 				} catch (cause) {
+					if (id !== requestIdRef.current) return;
 					console.warn("[git-branch-switcher] status failed", cause);
 					setStatus(null);
 				}
@@ -469,14 +518,17 @@ window.__ModuleLoader__.load({
 				setBusy(true);
 				setError(void 0);
 				try {
-					const result = await call("checkout", confirmed === true
-						? { sessionId, branch: name, confirmed: true }
-						: { sessionId, branch: name });
+					const result = await call("checkout", {
+						sessionId,
+						branch: name,
+						confirmed: confirmed === true
+					});
 					if (result?.requireConfirm === true) {
 						setConfirming({ branch: name, dirtyFiles: result.dirtyFiles, targetMissing: result.targetMissing });
 					} else {
 						setStatus(result);
 						setConfirming(void 0);
+						await refresh();
 					}
 				} catch (cause) {
 					setError(t("error.failed", { message: String(cause?.message ?? cause) }));

@@ -88,7 +88,7 @@ export default class BranchSwitcherService extends TypertRemoteService {
 
 	/**
 	 * Read the repository state around the session's working directory.
-	 * @param request - Session identity of the calling conversation.
+	 * @param request - Request object carrying the session identity.
 	 * @param signal - Cancellation signal of the Remote call.
 	 * @returns Repository presence, current branch, branch rows, and change count.
 	 */
@@ -131,12 +131,13 @@ export default class BranchSwitcherService extends TypertRemoteService {
 
 	/**
 	 * Switch to one local branch, confirming dirty or missing targets first.
-	 * @param request - Target branch, session identity, and the confirmation flag.
+	 * @param request - Request object carrying the session identity, target branch, and confirmation flag.
 	 * @param signal - Cancellation signal of the Remote call.
 	 * @returns A confirmation request, or the new repository state.
 	 */
 	async checkout(request, signal) {
-		assertBranchName(request.branch);
+		const branch = request.branch;
+		assertBranchName(branch);
 		const cwd = await this.sessionDirectory(request.sessionId, signal);
 		const top = await runGit(this.ctx, cwd, ["rev-parse", "--show-toplevel"], signal);
 		if (top.exitCode !== 0) {
@@ -147,15 +148,15 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		const dirtyFiles = dirty.exitCode === 0 ? countLines(dirty.stdout) : 0;
 		const listing = await runGit(this.ctx, toplevel, ["for-each-ref", "--format=%(refname:short)", "refs/heads"], signal);
 		const known = listing.stdout.split(/\r?\n/u).map((line) => line.trim());
-		const targetMissing = !known.includes(request.branch);
+		const targetMissing = !known.includes(branch);
 		if ((dirtyFiles > 0 || targetMissing) && request.confirmed !== true) {
 			return { requireConfirm: true, dirtyFiles, targetMissing };
 		}
-		const result = await runGit(this.ctx, toplevel, ["switch", request.branch], signal);
+		const result = await runGit(this.ctx, toplevel, ["switch", branch], signal);
 		if (result.exitCode !== 0) {
 			throw new RemoteError("branchSwitcher/switch-failed", gitMessage(result, "git switch failed"), {});
 		}
-		return { ...(await this.status({ sessionId: request.sessionId }, signal)), switched: true };
+		return { ...(await this.status(request, signal)), switched: true };
 	}
 
 	/** Resolve the session's effective working directory through the harness owners. */
