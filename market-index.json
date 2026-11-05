@@ -1,0 +1,64 @@
+{
+  "format": 1,
+  "title": {
+    "en": "milestone-17 DSH Plugins",
+    "zh": "milestone-17 的 DSH 插件"
+  },
+  "description": {
+    "en": "Open-source plugins for DeepSeek Harness by milestone-17.",
+    "zh": "milestone-17 开源的 DeepSeek Harness 插件合集。"
+  },
+  "metadata": {
+    "categories": {
+      "developer": {
+        "title": {
+          "en": "Developer tools",
+          "zh": "开发工具"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "@luochbiao/dsh-git-branch-switcher",
+      "title": {
+        "en": "Git Branch Switcher",
+        "zh": "Git 分支切换器"
+      },
+      "description": {
+        "en": "A composer chip that shows the current git branch of the session working directory and switches local branches from a popup menu, with confirmation before switching on a dirty tree.",
+        "zh": "在输入框工具行显示当前 git 分支的胶囊按钮，弹出菜单一键切换本地分支；工作区不干净或目标分支缺失时先弹确认。"
+      },
+      "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJub25lIj4KICA8cGF0aCBkPSJNNC41IDJhMiAyIDAgMSAwIC45IDMuNzlBMiAyIDAgMCAwIDQuNSAyWm0wIDQuNnYyLjhhMy42IDMuNiAwIDAgMCAzLjYgMy42aC40YTIgMiAwIDEgMCAwLTEuMmgtLjRhMi40IDIuNCAwIDAgMS0yLjQtMi40VjYuNmEyIDIgMCAxIDAtMS4yIDBaTTExLjUgOS40YTIgMiAwIDEgMCAuOS4yMUEyIDIgMCAwIDAgMTEuNSA5LjRaIiBmaWxsPSJjdXJyZW50Q29sb3IiLz4KPC9zdmc+Cg==",
+      "author": "LuoBiao (milestone-17)",
+      "homepage": "https://github.com/milestone-17/dsh-git-branch-switcher#readme",
+      "repository": {
+        "url": "https://github.com/milestone-17/dsh-git-branch-switcher"
+      },
+      "metadata": {
+        "category": "developer",
+        "keywords": [
+          "git",
+          "branch",
+          "checkout",
+          "composer",
+          "developer"
+        ]
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1793888439,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
+            "commit": "dd5cb35163ca5e89abeb927faceb79f1bd8268b5"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.5"
+          }
+        }
+      ]
+    }
+  ]
+}
