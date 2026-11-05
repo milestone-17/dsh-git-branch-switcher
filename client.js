@@ -164,12 +164,19 @@ window.__ModuleLoader__.load({
 			"name": zod.z.string().describe("Local branch name."),
 			"current": zod.z.boolean().describe("Whether HEAD points at this branch.")
 		});
+		const $remoteBranchRow = () => zod.z.object({
+			"name": zod.z.string().describe("Remote-tracking branch name, such as origin/main."),
+			"short": zod.z.string().describe("Branch name without the remote prefix."),
+			"remote": zod.z.string().describe("Remote name the branch belongs to."),
+			"local": zod.z.boolean().describe("Whether a local branch with the same short name exists.")
+		});
 		const $status_result = () => $status_result$value ??= zod.z.object({
 			"repository": zod.z.boolean().describe("Whether the session directory is inside a git work tree."),
 			"toplevel": zod.z.string().optional().describe("Repository root when repository is true."),
 			"current": zod.z.string().optional().describe("Current branch; omitted on a detached HEAD."),
 			"detached": zod.z.boolean().optional().describe("Whether HEAD is detached."),
 			"branches": zod.z.array($branchRow()).optional().describe("Local branches, most recent commit first, capped at 500."),
+			"remoteBranches": zod.z.array($remoteBranchRow()).optional().describe("Remote-tracking branches, most recent commit first."),
 			"dirtyLines": zod.z.number().optional().describe("Uncommitted changes reported by git status --porcelain.")
 		});
 		let $status_result$value;
@@ -186,10 +193,23 @@ window.__ModuleLoader__.load({
 				"current": zod.z.string().optional(),
 				"detached": zod.z.boolean().optional(),
 				"branches": zod.z.array($branchRow()).optional(),
+				"remoteBranches": zod.z.array($remoteBranchRow()).optional(),
 				"dirtyLines": zod.z.number().optional()
 			})
 		]);
 		let $checkout_result$value;
+		const $fetch_result = () => $fetch_result$value ??= zod.z.object({
+			"repository": zod.z.boolean().describe("Whether the session directory is inside a git work tree."),
+			"fetched": zod.z.literal(true).describe("Set after a successful git fetch."),
+			"output": zod.z.string().optional().describe("Trimmed git fetch output."),
+			"toplevel": zod.z.string().optional(),
+			"current": zod.z.string().optional(),
+			"detached": zod.z.boolean().optional(),
+			"branches": zod.z.array($branchRow()).optional(),
+			"remoteBranches": zod.z.array($remoteBranchRow()).optional(),
+			"dirtyLines": zod.z.number().optional()
+		});
+		let $fetch_result$value;
 		const $status_request = () => zod.z.object({
 			"sessionId": zod.z.string().describe("Session identity of the calling conversation.")
 		});
@@ -302,6 +322,28 @@ window.__ModuleLoader__.load({
 						description: "a confirmation request, or the repository state after the switch.",
 						jsonSchema: { type: "object", additionalProperties: true }
 					}
+				},
+				"branchSwitcher/fetch": {
+					service: "branchSwitcher",
+					description: "Fetch every configured remote so remote-tracking branches catch up.",
+					invocation: { kind: "direct" },
+					parameters: [
+						{
+							name: "request",
+							description: "request object carrying the session identity.",
+							source: "json",
+							codec: statusRequestCodec(),
+							strictCodec: statusRequestStrictCodec()
+						}
+					],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchFetch",
+						create: $fetch_result,
+						description: "the refreshed repository state after a successful git fetch.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
 				}
 			}
 		}, zod.z);
@@ -318,12 +360,18 @@ window.__ModuleLoader__.load({
 			"menu.current": "current",
 			"menu.dirty": "{count} uncommitted change(s)",
 			"menu.refresh": "Refresh",
+			"menu.fetch": "Fetch remote branches",
+			"menu.fetching": "Fetching…",
+			"menu.fetched": "Remote branches are up to date.",
+			"menu.remoteSection": "Remote branches",
+			"menu.remoteTag": "remote",
 			"confirm.title": "Confirm switch",
 			"confirm.dirty": "The working tree has {count} uncommitted change(s). Switching branches may discard them.",
 			"confirm.missing": "Branch \"{branch}\" does not exist locally. Git will create it from the current commit.",
 			"confirm.ok": "Switch anyway",
 			"confirm.cancel": "Cancel",
-			"error.failed": "Branch operation failed: {message}"
+			"error.failed": "Branch operation failed: {message}",
+			"error.fetch": "Fetch failed: {message}"
 		};
 		const zh = {
 			"chip.detached": "游离 HEAD",
@@ -334,12 +382,18 @@ window.__ModuleLoader__.load({
 			"menu.current": "当前",
 			"menu.dirty": "{count} 处未提交改动",
 			"menu.refresh": "刷新",
+			"menu.fetch": "同步远端分支",
+			"menu.fetching": "同步中…",
+			"menu.fetched": "远端分支已是最新。",
+			"menu.remoteSection": "远端分支",
+			"menu.remoteTag": "远端",
 			"confirm.title": "确认切换",
 			"confirm.dirty": "工作区有 {count} 处未提交改动，切换分支可能会丢失这些改动。",
 			"confirm.missing": "本地不存在分支“{branch}”，git 将基于当前提交创建它。",
 			"confirm.ok": "仍然切换",
 			"confirm.cancel": "取消",
-			"error.failed": "分支操作失败：{message}"
+			"error.failed": "分支操作失败：{message}",
+			"error.fetch": "同步远端分支失败：{message}"
 		};
 		const isChinese = () => /^zh\b/i.test(navigator.language ?? "");
 		const dictionary = () => isChinese() ? zh : en;
@@ -362,6 +416,13 @@ window.__ModuleLoader__.load({
 .${BASE}-chevron{flex:0 0 auto;transition:transform .15s ease}
 .${BASE}-menu{position:fixed;z-index:1200;min-width:220px;max-width:320px;padding:6px;border-radius:10px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.25));background:var(--dsw-alias-background-primary,#fff);box-shadow:0 8px 24px rgba(0,0,0,.18);color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-title{padding:4px 8px;font-size:11px;color:var(--dsw-alias-label-tertiary,#999)}
+.${BASE}-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.${BASE}-fetch{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.25));background:transparent;color:var(--dsw-alias-label-secondary,#888);font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap}
+.${BASE}-fetch:hover:not(:disabled){background:var(--dsw-alias-background-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-fetch:disabled{opacity:.6;cursor:default}
+.${BASE}-section{margin-top:6px;padding-top:6px;border-top:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.18))}
+.${BASE}-section-title{padding:2px 8px 4px;font-size:11px;color:var(--dsw-alias-label-tertiary,#999)}
+.${BASE}-notice-line{margin-top:6px;padding:6px 8px;border-radius:6px;background:var(--dsw-alias-background-secondary,transparent);font-size:11px;color:var(--dsw-alias-label-tertiary,#999)}
 .${BASE}-filter{width:100%;box-sizing:border-box;margin:2px 0 6px;padding:5px 8px;border-radius:6px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.25));background:var(--dsw-alias-background-secondary,transparent);color:inherit;font-size:12px}
 .${BASE}-list{max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:1px}
 .${BASE}-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer;background:transparent;border:none;text-align:left;width:100%;color:inherit}
@@ -428,6 +489,19 @@ window.__ModuleLoader__.load({
 			"stroke-linecap": "round",
 			"stroke-linejoin": "round"
 		}));
+		const SyncIcon = () => h("svg", {
+			width: 12,
+			height: 12,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", {
+			d: "M13.5 8a5.5 5.5 0 1 1-1.7-3.97M13.5 2.5V6H10",
+			stroke: "currentColor",
+			"stroke-width": "1.5",
+			"stroke-linecap": "round",
+			"stroke-linejoin": "round"
+		}));
 		//#endregion
 
 		//#region chip
@@ -442,6 +516,8 @@ window.__ModuleLoader__.load({
 			const [busy, setBusy] = React.useState(false);
 			const [confirming, setConfirming] = React.useState(void 0);
 			const [error, setError] = React.useState(void 0);
+			const [notice, setNotice] = React.useState(void 0);
+			const [fetching, setFetching] = React.useState(false);
 			const [query, setQuery] = React.useState("");
 			const [position, setPosition] = React.useState(void 0);
 			const rootRef = React.useRef(void 0);
@@ -506,12 +582,32 @@ window.__ModuleLoader__.load({
 			const filtered = query === ""
 				? branches
 				: branches.filter((branch) => branch.name.toLowerCase().includes(query.toLowerCase()));
+			const remoteRows = (status.remoteBranches ?? []).filter((ref) => ref.local !== true);
+			const filteredRemote = query === ""
+				? remoteRows
+				: remoteRows.filter((ref) => ref.short.toLowerCase().includes(query.toLowerCase()) || ref.name.toLowerCase().includes(query.toLowerCase()));
 			const openMenu = () => {
 				setConfirming(void 0);
 				setError(void 0);
+				setNotice(void 0);
 				setQuery("");
 				setOpen(true);
 				refresh();
+			};
+			const fetchRemotes = async () => {
+				if (busy || fetching) return;
+				setFetching(true);
+				setError(void 0);
+				setNotice(void 0);
+				try {
+					const result = await call("fetch", { sessionId });
+					if (result?.repository === true) setStatus(result);
+					setNotice(t("menu.fetched"));
+				} catch (cause) {
+					setError(t("error.fetch", { message: String(cause?.message ?? cause) }));
+				} finally {
+					setFetching(false);
+				}
 			};
 			const pick = async (name, confirmed) => {
 				if (busy) return;
@@ -563,14 +659,35 @@ window.__ModuleLoader__.load({
 						disabled: busy,
 						onClick: () => pick(confirming.branch, true)
 					}, t("confirm.ok"))));
+			const remoteBranchRows = filteredRemote.length === 0
+				? null
+				: h("div", { className: `${BASE}-section` },
+					h("div", { className: `${BASE}-section-title` }, t("menu.remoteSection")),
+					filteredRemote.map((ref) => h("button", {
+						key: ref.name,
+						type: "button",
+						className: `${BASE}-row`,
+						role: "menuitem",
+						disabled: busy || fetching,
+						onClick: () => pick(ref.name, false)
+					}, h("span", { style: { width: "14px" } }), h("span", { className: `${BASE}-row-name` }, ref.short), h("span", { className: `${BASE}-row-tag` }, ref.remote))));
 			const errorNotice = error === void 0 ? null : h("div", { className: `${BASE}-error` }, error);
+			const noticeLine = notice === void 0 ? null : h("div", { className: `${BASE}-notice-line` }, notice);
 			const menu = open ? h("div", {
 				className: `${BASE}-menu`,
 				ref: menuRef,
 				role: "menu",
 				style: position === void 0 ? { visibility: "hidden" } : { left: `${position.left}px`, top: `${position.top}px` }
 			},
-				h("div", { className: `${BASE}-title` }, t("menu.title")),
+				h("div", { className: `${BASE}-header` },
+					h("span", { className: `${BASE}-title` }, t("menu.title")),
+					h("button", {
+						type: "button",
+						className: `${BASE}-fetch`,
+						disabled: busy || fetching,
+						title: t("menu.fetch"),
+						onClick: fetchRemotes
+					}, h(SyncIcon, null), h("span", null, fetching ? t("menu.fetching") : t("menu.fetch")))),
 				h("input", {
 					className: `${BASE}-filter`,
 					type: "text",
@@ -578,7 +695,8 @@ window.__ModuleLoader__.load({
 					placeholder: t("menu.filter"),
 					onChange: (event) => setQuery(event.target.value)
 				}),
-				h("div", { className: `${BASE}-list` }, branchRows),
+				h("div", { className: `${BASE}-list` }, branchRows, remoteBranchRows),
+				noticeLine,
 				confirmNotice,
 				errorNotice) : null;
 			return h("div", { className: `${BASE}-root`, ref: rootRef, style: { display: "inline-flex" } },

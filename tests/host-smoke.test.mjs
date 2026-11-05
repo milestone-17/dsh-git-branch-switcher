@@ -57,7 +57,15 @@ function createRepository() {
 	return dir;
 }
 
+/** Build a bare repository that plays the role of the upstream remote. */
+function createRemote() {
+	const dir = mkdtempSync(join(tmpdir(), "gbs-host-remote-"));
+	execFileSync("git", ["init", "--bare", "-b", "main", dir], { stdio: "ignore" });
+	return dir;
+}
+
 const repository = createRepository();
+const remote = createRemote();
 try {
 	const ctx = {
 		reflect: { provide() {} },
@@ -104,7 +112,32 @@ try {
 		"option-like branch names are rejected"
 	);
 
+	rmSync(join(repository, "dirty.txt"), { force: true });
+	execFileSync("git", ["remote", "add", "origin", remote], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["push", "-u", "origin", "main"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["checkout", "-b", "feature/remote-only"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["push", "origin", "feature/remote-only"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["branch", "-D", "feature/remote-only"], { cwd: repository, stdio: "ignore" });
+
+	const fetched = await service.fetch({ sessionId: "session-1" });
+	assert.equal(fetched.fetched, true, "fetch reported");
+	assert.equal(fetched.repository, true, "repository still detected after fetch");
+	const remoteRow = (fetched.remoteBranches ?? []).find((ref) => ref.name === "origin/feature/remote-only");
+	assert.ok(remoteRow !== void 0, "remote-tracking branch listed after fetch");
+	assert.equal(remoteRow.short, "feature/remote-only", "remote short name reported");
+	assert.equal(remoteRow.local, false, "remote-only branch marked as not local");
+	const localRow = (fetched.remoteBranches ?? []).find((ref) => ref.name === "origin/main");
+	assert.equal(localRow?.local, true, "remote branch with a local counterpart is marked");
+
+	const tracked = await service.checkout({ sessionId: "session-1", branch: "origin/feature/remote-only" });
+	assert.equal(tracked.switched, true, "remote branch switch reported");
+	assert.equal(tracked.current, "feature/remote-only", "local tracking branch created and checked out");
+	const upstream = execFileSync("git", ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], { cwd: repository }).toString().trim();
+	assert.equal(upstream, "origin/feature/remote-only", "new branch tracks the remote branch");
+
 	console.log("host smoke test: ok");
 } finally {
 	rmSync(repository, { recursive: true, force: true });
+	rmSync(remote, { recursive: true, force: true });
 }

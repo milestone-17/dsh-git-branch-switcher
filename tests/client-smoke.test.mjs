@@ -53,7 +53,8 @@ const statusValue = { repository: true, current: "main", detached: false, branch
 const scope = {
 	remote: {
 		branchSwitcher: {
-			status: async () => ({ ok: true, value: statusValue })
+			status: async () => ({ ok: true, value: statusValue }),
+			fetch: async () => ({ ok: true, value: { repository: true, fetched: true, output: "synced" } })
 		}
 	},
 	slots: {
@@ -96,6 +97,10 @@ assert.equal(props.sessionId, "session-42");
 const observed = await props.call("status", { sessionId: "session-42" });
 assert.equal(observed.repository, true);
 assert.equal(observed.current, "main");
+
+const fetched = await props.call("fetch", { sessionId: "session-42" });
+assert.equal(fetched.fetched, true, "fetch call reaches the Remote face");
+assert.equal(fetched.output, "synced", "fetch output is returned to the chip");
 
 await dispose();
 assert.equal(unmounted, true, "remote unmounted on dispose");

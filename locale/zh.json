@@ -7,10 +7,16 @@
   "menu.current": "当前",
   "menu.dirty": "{count} 处未提交改动",
   "menu.refresh": "刷新",
+  "menu.fetch": "同步远端分支",
+  "menu.fetching": "同步中…",
+  "menu.fetched": "远端分支已是最新。",
+  "menu.remoteSection": "远端分支",
+  "menu.remoteTag": "远端",
   "confirm.title": "确认切换",
   "confirm.dirty": "工作区有 {count} 处未提交改动，切换分支可能会丢失这些改动。",
   "confirm.missing": "本地不存在分支“{branch}”，git 将基于当前提交创建它。",
   "confirm.ok": "仍然切换",
   "confirm.cancel": "取消",
-  "error.failed": "分支操作失败：{message}"
+  "error.failed": "分支操作失败：{message}",
+  "error.fetch": "同步远端分支失败：{message}"
 }

@@ -7,10 +7,16 @@
   "menu.current": "current",
   "menu.dirty": "{count} uncommitted change(s)",
   "menu.refresh": "Refresh",
+  "menu.fetch": "Fetch remote branches",
+  "menu.fetching": "Fetching…",
+  "menu.fetched": "Remote branches are up to date.",
+  "menu.remoteSection": "Remote branches",
+  "menu.remoteTag": "remote",
   "confirm.title": "Confirm switch",
   "confirm.dirty": "The working tree has {count} uncommitted change(s). Switching branches may discard them.",
   "confirm.missing": "Branch \"{branch}\" does not exist locally. Git will create it from the current commit.",
   "confirm.ok": "Switch anyway",
   "confirm.cancel": "Cancel",
-  "error.failed": "Branch operation failed: {message}"
+  "error.failed": "Branch operation failed: {message}",
+  "error.fetch": "Fetch failed: {message}"
 }
