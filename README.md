@@ -6,6 +6,8 @@ A composer chip that shows the current git branch of your session's working dire
 
 ![Icon](./icon.svg)
 
+![分支切换菜单](./docs/screenshot.png)
+
 ## 功能 / Features
 
 - 胶囊显示当前分支（分离 HEAD 时显示“游离 HEAD”），位于输入框工具行左侧（slot `conversation.input.left`）。
