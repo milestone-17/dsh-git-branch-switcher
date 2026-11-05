@@ -371,7 +371,8 @@ window.__ModuleLoader__.load({
 			"confirm.ok": "Switch anyway",
 			"confirm.cancel": "Cancel",
 			"error.failed": "Branch operation failed: {message}",
-			"error.fetch": "Fetch failed: {message}"
+			"error.fetch": "Fetch failed: {message}",
+			"error.fetchStaleHost": "The running host is an older version without the fetch method. Restart DeepSeek Harness to enable remote syncing."
 		};
 		const zh = {
 			"chip.detached": "游离 HEAD",
@@ -393,7 +394,8 @@ window.__ModuleLoader__.load({
 			"confirm.ok": "仍然切换",
 			"confirm.cancel": "取消",
 			"error.failed": "分支操作失败：{message}",
-			"error.fetch": "同步远端分支失败：{message}"
+			"error.fetch": "同步远端分支失败：{message}",
+			"error.fetchStaleHost": "当前运行的宿主版本较旧，还没有同步能力。请完全退出并重启 DeepSeek Harness 应用后再试。"
 		};
 		const isChinese = () => /^zh\b/i.test(navigator.language ?? "");
 		const dictionary = () => isChinese() ? zh : en;
@@ -604,7 +606,10 @@ window.__ModuleLoader__.load({
 					if (result?.repository === true) setStatus(result);
 					setNotice(t("menu.fetched"));
 				} catch (cause) {
-					setError(t("error.fetch", { message: String(cause?.message ?? cause) }));
+					const message = String(cause?.message ?? cause);
+					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
+						? t("error.fetchStaleHost")
+						: t("error.fetch", { message }));
 				} finally {
 					setFetching(false);
 				}
