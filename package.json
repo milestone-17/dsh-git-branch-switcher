@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@luochbiao/dsh-git-branch-switcher",
   "description": "Git branch switcher chip in the composer tool row of the DeepSeek Harness",
   "version": "0.2.1",
