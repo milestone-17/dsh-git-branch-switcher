@@ -30,6 +30,19 @@ A composer chip that shows the current git branch of the session's working direc
 dsh plugin --profile desktop install git+https://github.com/milestone-17/dsh-git-branch-switcher.git
 ```
 
+国内网络可用镜像通道（内容与官方仓库一致）：
+
+```bash
+dsh plugin --profile desktop install git+https://ghproxy.net/https://github.com/milestone-17/dsh-git-branch-switcher.git
+dsh plugin --profile desktop install git+https://gitclone.com/github.com/milestone-17/dsh-git-branch-switcher.git
+```
+
+市场索引（自建市场或第三方 index 服务可直接引用）：
+
+```
+https://ghproxy.net/https://raw.githubusercontent.com/milestone-17/dsh-git-branch-switcher/master/market-index.json
+```
+
 ### 方式二：本地目录安装
 
 在插件页选择「安装本地包」指向本仓库目录，或：
@@ -49,6 +62,8 @@ DSH 目前没有面向第三方的官方插件市场；插件页「发现」选�
 ```
 https://<your-host>/dsh-plugins/market-index.json
 ```
+
+本插件已提交收录到社区插件目录 [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（PR: [#12252](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/12252)），该目录是 [dsh-market](https://github.com/dsh-market/dsh-market) 市场插件的目录来源，合并后市场会自动收录；同时也登记在社区插件注册表 [zhu1090093659/dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins/pull/82)。仓库同时带有 `dsh-plugin` GitHub topic，可被按主题检索。
 
 发布新版本时：更新 `market-index.json` 里 `versions[0].version`、`publishTimestamp`（Unix 秒）与 `source.commit`（40 位完整 commit SHA），推送到仓库即可。
 
