@@ -1,7 +1,7 @@
 {
   "name": "@luochbiao/dsh-git-branch-switcher",
   "description": "Git branch switcher chip in the composer tool row of the DeepSeek Harness",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "icon": "./icon.svg",
   "type": "module",
   "main": "index.js",
@@ -27,7 +27,7 @@
   "license": "MIT",
   "engines": {
     "node": ">=22",
-    "dsh": ">=0.2.1-rc.2 <0.4.0-0"
+    "dsh": ">=0.2.1-rc.2 <0.3.0 || >=0.3.0-rc.1 <0.4.0-0"
   },
   "repository": {
     "type": "git",
@@ -42,11 +42,16 @@
     "plugin"
   ],
   "dependencies": {
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.5",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.5 <0.3.0 || >=0.3.0-rc.1 <0.4.0-0",
     "@deepseek-ai/cordis": "~4.0.5"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    }
   },
   "dsh": {
     "bundle": {
@@ -62,4 +67,3 @@
     }
   }
 }
-
