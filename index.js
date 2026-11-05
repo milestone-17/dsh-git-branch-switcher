@@ -1,7 +1,7 @@
 /**
  * Host half of the Git branch switcher plugin.
  *
- * Exposes one Typert Remote service `branchSwitcher` with three direct methods:
+ * Exposes one Typert Remote service `branchSwitcher` with four direct methods:
  * - `status`: resolve the session's effective working directory, detect the
  *   enclosing git repository, and collect the current branch, local branches,
  *   and remote-tracking branches.
@@ -9,6 +9,8 @@
  *   first when the working tree is dirty or the target branch is missing; a
  *   remote-only branch creates its local tracking branch on the way.
  * - `fetch`: run `git fetch --all --prune` so remote-tracking branches catch up.
+ * - `create`: create a branch from a chosen base branch and switch the session
+ *   onto the new branch right away.
  *
  * Git runs through the harness subprocess seam with collected stdio, so no
  * shell is involved and the child inherits no harness credential environment.
@@ -192,6 +194,48 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	}
 
 	/**
+	 * Create a branch from a chosen base and switch the session onto it.
+	 * @param request - Request object carrying the session identity, the new branch name, the base branch, and the confirmation flag.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns A confirmation request, or the new repository state.
+	 */
+	async create(request, signal) {
+		const name = request.name;
+		assertBranchName(name);
+		const base = request.base;
+		if (typeof base !== "string" || base.length === 0) {
+			throw new RemoteError("branchSwitcher/invalid-base", "base branch must be a non-empty string", {});
+		}
+		assertBranchName(base);
+		const cwd = await this.sessionDirectory(request.sessionId, signal);
+		const top = await runGit(this.ctx, cwd, ["rev-parse", "--show-toplevel"], signal);
+		if (top.exitCode !== 0) {
+			return { repository: false };
+		}
+		const toplevel = top.stdout.trim();
+		const listing = await runGit(this.ctx, toplevel, ["for-each-ref", "--format=%(refname:short)", "refs/heads"], signal);
+		const known = listing.stdout.split(/\r?\n/u).map((line) => line.trim()).filter((line) => line.length > 0);
+		if (known.includes(name)) {
+			throw new RemoteError("branchSwitcher/branch-exists", `branch already exists: ${name.slice(0, 60)}`, {});
+		}
+		const remoteRefs = await this.remoteRefs(toplevel, signal);
+		const startPoint = this.resolveBase(base, known, remoteRefs);
+		if (startPoint === null) {
+			throw new RemoteError("branchSwitcher/base-missing", `base branch not found: ${base.slice(0, 60)}`, {});
+		}
+		const dirty = await runGit(this.ctx, toplevel, ["status", "--porcelain"], signal);
+		const dirtyFiles = dirty.exitCode === 0 ? countLines(dirty.stdout) : 0;
+		if (dirtyFiles > 0 && request.confirmed !== true) {
+			return { requireConfirm: true, dirtyFiles, targetMissing: false };
+		}
+		const result = await runGit(this.ctx, toplevel, ["switch", "-c", name, startPoint], signal);
+		if (result.exitCode !== 0) {
+			throw new RemoteError("branchSwitcher/create-failed", gitMessage(result, "git switch failed"), {});
+		}
+		return { ...(await this.status(request, signal)), created: true, createdBranch: name };
+	}
+
+	/**
 	 * Collect remote-tracking branches, newest first, and mark the ones whose
 	 * short name already has a local branch.
 	 * @param toplevel - Repository root directory.
@@ -259,6 +303,22 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		return { args: ["switch", "--track", ref.name], created: true };
 	}
 
+	/**
+	 * Resolve the base branch of a new branch into one concrete git ref.
+	 * @param base - Requested base branch, local or remote-tracking.
+	 * @param known - Existing local branch names.
+	 * @param remoteRefs - Known remote-tracking references.
+	 * @returns The concrete start-point ref, or null when nothing matches.
+	 */
+	resolveBase(base, known, remoteRefs) {
+		if (known.includes(base)) return base;
+		const exact = remoteRefs.find((ref) => ref.name === base);
+		if (exact !== undefined) return exact.name;
+		const candidates = remoteRefs.filter((ref) => ref.short === base);
+		if (candidates.length === 1) return candidates[0].name;
+		return null;
+	}
+
 	/** Resolve the session's effective working directory through the harness owners. */
 	async sessionDirectory(sessionId, signal) {
 		signal?.throwIfAborted?.();
@@ -276,3 +336,4 @@ export default class BranchSwitcherService extends TypertRemoteService {
 markRemote(BranchSwitcherService.prototype, "status");
 markRemote(BranchSwitcherService.prototype, "checkout");
 markRemote(BranchSwitcherService.prototype, "fetch");
+markRemote(BranchSwitcherService.prototype, "create");

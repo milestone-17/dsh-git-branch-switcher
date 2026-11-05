@@ -210,6 +210,25 @@ window.__ModuleLoader__.load({
 			"dirtyLines": zod.z.number().optional()
 		});
 		let $fetch_result$value;
+		const $create_result = () => $create_result$value ??= zod.z.union([
+			zod.z.object({
+				"requireConfirm": zod.z.literal(true),
+				"dirtyFiles": zod.z.number(),
+				"targetMissing": zod.z.boolean()
+			}),
+			zod.z.object({
+				"repository": zod.z.boolean(),
+				"created": zod.z.literal(true),
+				"createdBranch": zod.z.string(),
+				"toplevel": zod.z.string().optional(),
+				"current": zod.z.string().optional(),
+				"detached": zod.z.boolean().optional(),
+				"branches": zod.z.array($branchRow()).optional(),
+				"remoteBranches": zod.z.array($remoteBranchRow()).optional(),
+				"dirtyLines": zod.z.number().optional()
+			})
+		]);
+		let $create_result$value;
 		const $status_request = () => zod.z.object({
 			"sessionId": zod.z.string().describe("Session identity of the calling conversation.")
 		});
@@ -224,6 +243,18 @@ window.__ModuleLoader__.load({
 		const $checkout_request_strict = () => zod.z.strictObject({
 			"sessionId": zod.z.string(),
 			"branch": zod.z.string(),
+			"confirmed": zod.z.boolean().optional()
+		});
+		const $create_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"name": zod.z.string().describe("Name of the branch to create."),
+			"base": zod.z.string().describe("Base branch the new branch starts from."),
+			"confirmed": zod.z.boolean().optional().describe("Set after the user confirmed a dirty tree.")
+		});
+		const $create_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"name": zod.z.string(),
+			"base": zod.z.string(),
 			"confirmed": zod.z.boolean().optional()
 		});
 		const statusRequestCodec = () => ({
@@ -275,6 +306,38 @@ window.__ModuleLoader__.load({
 					confirmed: { type: "boolean" }
 				},
 				required: ["sessionId", "branch"],
+				additionalProperties: false
+			}
+		});
+		const createRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CreateRequest",
+			create: $create_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					name: { type: "string", description: "Name of the branch to create." },
+					base: { type: "string", description: "Base branch the new branch starts from." },
+					confirmed: { type: "boolean", description: "Set after the user confirmed a dirty tree." }
+				},
+				required: ["sessionId", "name", "base"],
+				additionalProperties: true
+			}
+		});
+		const createRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CreateRequest",
+			create: $create_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					name: { type: "string" },
+					base: { type: "string" },
+					confirmed: { type: "boolean" }
+				},
+				required: ["sessionId", "name", "base"],
 				additionalProperties: false
 			}
 		});
@@ -344,6 +407,28 @@ window.__ModuleLoader__.load({
 						description: "the refreshed repository state after a successful git fetch.",
 						jsonSchema: { type: "object", additionalProperties: true }
 					}
+				},
+				"branchSwitcher/create": {
+					service: "branchSwitcher",
+					description: "Create a branch from a chosen base branch and switch onto it.",
+					invocation: { kind: "direct" },
+					parameters: [
+						{
+							name: "request",
+							description: "request object carrying the session identity, the new branch name, the base branch, and the confirmation flag.",
+							source: "json",
+							codec: createRequestCodec(),
+							strictCodec: createRequestStrictCodec()
+						}
+					],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchCreate",
+						create: $create_result,
+						description: "a confirmation request, or the repository state after the new branch was created and checked out.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
 				}
 			}
 		}, zod.z);
@@ -355,8 +440,8 @@ window.__ModuleLoader__.load({
 			"chip.detached": "detached HEAD",
 			"chip.loading": "loading branch…",
 			"menu.title": "Switch branch",
-			"menu.filter": "Filter branches…",
-			"menu.empty": "No local branch found.",
+			"menu.filter": "Search branches",
+			"menu.empty": "No branch found.",
 			"menu.current": "current",
 			"menu.dirty": "{count} uncommitted change(s)",
 			"menu.refresh": "Refresh",
@@ -365,6 +450,15 @@ window.__ModuleLoader__.load({
 			"menu.fetched": "Remote branches are up to date.",
 			"menu.remoteSection": "Remote branches",
 			"menu.remoteTag": "remote",
+			"menu.newBranch": "New branch",
+			"menu.createHint": "Create a branch and switch to it right away.",
+			"create.title": "New branch",
+			"create.name": "Branch name",
+			"create.namePlaceholder": "feature/my-branch",
+			"create.base": "Start from",
+			"create.cancel": "Cancel",
+			"create.submit": "Create & switch",
+			"create.nameRequired": "Enter a branch name first.",
 			"confirm.title": "Confirm switch",
 			"confirm.dirty": "The working tree has {count} uncommitted change(s). Switching branches may discard them.",
 			"confirm.missing": "Branch \"{branch}\" does not exist locally. Git will create it from the current commit.",
@@ -378,8 +472,8 @@ window.__ModuleLoader__.load({
 			"chip.detached": "游离 HEAD",
 			"chip.loading": "正在读取分支…",
 			"menu.title": "切换分支",
-			"menu.filter": "筛选分支…",
-			"menu.empty": "没有找到本地分支。",
+			"menu.filter": "搜索分支",
+			"menu.empty": "没有找到分支。",
 			"menu.current": "当前",
 			"menu.dirty": "{count} 处未提交改动",
 			"menu.refresh": "刷新",
@@ -388,6 +482,15 @@ window.__ModuleLoader__.load({
 			"menu.fetched": "远端分支已是最新。",
 			"menu.remoteSection": "远端分支",
 			"menu.remoteTag": "远端",
+			"menu.newBranch": "新建分支",
+			"menu.createHint": "创建分支并立即切换过去。",
+			"create.title": "新建分支",
+			"create.name": "分支名称",
+			"create.namePlaceholder": "feature/my-branch",
+			"create.base": "基于",
+			"create.cancel": "取消",
+			"create.submit": "创建并切换",
+			"create.nameRequired": "请先填写分支名称。",
 			"confirm.title": "确认切换",
 			"confirm.dirty": "工作区有 {count} 处未提交改动，切换分支可能会丢失这些改动。",
 			"confirm.missing": "本地不存在分支“{branch}”，git 将基于当前提交创建它。",
@@ -410,35 +513,55 @@ window.__ModuleLoader__.load({
 		const BASE = "dshgbs";
 		const STYLE_ID = "dshgbs-styles";
 		const CSS = `
-.${BASE}-chip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1;cursor:pointer;max-width:180px}
-.${BASE}-chip:hover{background:var(--dsw-alias-background-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
-.${BASE}-chip:focus-visible{outline:2px solid var(--dsw-alias-focus-ring,currentColor);outline-offset:1px}
-.${BASE}-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.${BASE}-icon{flex:0 0 auto}
-.${BASE}-chevron{flex:0 0 auto;transition:transform .15s ease}
-.${BASE}-menu{position:fixed;z-index:1200;min-width:220px;max-width:320px;padding:6px;border-radius:10px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.25));background:var(--dsw-alias-background-primary,#fff);box-shadow:0 8px 24px rgba(0,0,0,.18);color:var(--dsw-alias-label-primary,#333)}
-.${BASE}-title{padding:4px 8px;font-size:11px;color:var(--dsw-alias-label-tertiary,#999)}
-.${BASE}-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.${BASE}-fetch{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.25));background:transparent;color:var(--dsw-alias-label-secondary,#888);font-size:11px;line-height:1.2;cursor:pointer;white-space:nowrap}
-.${BASE}-fetch:hover:not(:disabled){background:var(--dsw-alias-background-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
-.${BASE}-fetch:disabled{opacity:.6;cursor:default}
-.${BASE}-section{margin-top:6px;padding-top:6px;border-top:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.18))}
-.${BASE}-section-title{padding:2px 8px 4px;font-size:11px;color:var(--dsw-alias-label-tertiary,#999)}
-.${BASE}-notice-line{margin-top:6px;padding:6px 8px;border-radius:6px;background:var(--dsw-alias-background-secondary,transparent);font-size:11px;color:var(--dsw-alias-label-tertiary,#999)}
-.${BASE}-filter{width:100%;box-sizing:border-box;margin:2px 0 6px;padding:5px 8px;border-radius:6px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.25));background:var(--dsw-alias-background-secondary,transparent);color:inherit;font-size:12px}
-.${BASE}-list{max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:1px}
-.${BASE}-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer;background:transparent;border:none;text-align:left;width:100%;color:inherit}
-.${BASE}-row:hover{background:var(--dsw-alias-background-hover,rgba(127,127,127,.12))}
-.${BASE}-row[aria-checked="true"]{color:var(--dsw-alias-label-primary,#333);font-weight:600}
-.${BASE}-row-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.${BASE}-row-tag{flex:0 0 auto;font-size:10px;color:var(--dsw-alias-label-tertiary,#999)}
-.${BASE}-empty{padding:8px;font-size:12px;color:var(--dsw-alias-label-tertiary,#999)}
-.${BASE}-notice{margin-top:6px;padding:8px;border-radius:8px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.25));font-size:11px;line-height:1.5;color:var(--dsw-alias-label-secondary,#888)}
-.${BASE}-notice-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
-.${BASE}-button{padding:4px 10px;border-radius:6px;border:1px solid var(--dsw-alias-border-color,rgba(127,127,127,.35));background:transparent;color:inherit;font-size:12px;cursor:pointer}
-.${BASE}-button:hover{background:var(--dsw-alias-background-hover,rgba(127,127,127,.12))}
-.${BASE}-button-primary{border-color:transparent;background:var(--dsw-alias-accent,currentColor);color:var(--dsw-alias-label-inverse,#fff)}
-.${BASE}-error{margin-top:6px;font-size:11px;color:var(--dsw-alias-error,#d33)}
+.${BASE}-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 8px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1;cursor:pointer;max-width:200px;transition:background .12s ease,color .12s ease}
+.${BASE}-chip:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-chip:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
+.${BASE}-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px}
+.${BASE}-icon{flex:0 0 auto;opacity:.85}
+.${BASE}-chevron{flex:0 0 auto;transition:transform .15s ease;opacity:.7}
+.${BASE}-menu{position:fixed;z-index:1200;width:268px;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:6px;border-radius:12px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-overlay,#fff);box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.08);color:var(--dsw-alias-label-primary,#333);font-size:13px;line-height:1.4;user-select:none}
+.${BASE}-search{display:flex;align-items:center;gap:6px;padding:2px 2px 6px}
+.${BASE}-search-icon{flex:0 0 auto;color:var(--dsw-alias-label-tertiary,#999)}
+.${BASE}-filter{flex:1 1 auto;min-width:0;box-sizing:border-box;padding:6px 8px;border:none;border-radius:7px;outline:none;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.07));color:inherit;font-size:13px}
+.${BASE}-filter::placeholder{color:var(--dsw-alias-label-tertiary,#999)}
+.${BASE}-filter:focus{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.11))}
+.${BASE}-icon-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:none;border-radius:7px;background:transparent;color:var(--dsw-alias-label-tertiary,#999);cursor:pointer}
+.${BASE}-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-icon-button:disabled{opacity:.55;cursor:default}
+.${BASE}-icon-button[data-busy="true"] svg{animation:${BASE}-spin .9s linear infinite}
+@keyframes ${BASE}-spin{to{transform:rotate(360deg)}}
+.${BASE}-list{max-height:264px;overflow:auto;display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none}
+.${BASE}-row{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:7px 8px;border:none;border-radius:7px;background:transparent;color:inherit;font-size:13px;text-align:left;cursor:pointer}
+.${BASE}-row:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
+.${BASE}-row:disabled{opacity:.5;cursor:default}
+.${BASE}-row[aria-checked="true"]{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.13));color:var(--dsw-alias-brand-primary,#2f6feb);font-weight:500}
+.${BASE}-row-mark{flex:0 0 auto;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center}
+.${BASE}-row-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12.5px}
+.${BASE}-row-tag{flex:0 0 auto;padding:1px 6px;border-radius:5px;background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.1));color:var(--dsw-alias-label-tertiary,#999);font-size:11px;line-height:1.5}
+.${BASE}-section{margin-top:5px;padding-top:5px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
+.${BASE}-section-title{padding:3px 8px 4px;color:var(--dsw-alias-label-tertiary,#999);font-size:11px;letter-spacing:.02em}
+.${BASE}-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary,#999);font-size:12.5px}
+.${BASE}-footer{margin-top:5px;padding-top:5px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
+.${BASE}-row-new{color:var(--dsw-alias-label-secondary,#888)}
+.${BASE}-row-new:hover:not(:disabled){color:var(--dsw-alias-brand-primary,#2f6feb)}
+.${BASE}-panel{display:flex;flex-direction:column;gap:10px;padding:10px 8px 6px}
+.${BASE}-panel-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-panel-hint{margin-top:-6px;color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
+.${BASE}-field{display:flex;flex-direction:column;gap:5px}
+.${BASE}-field-label{color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
+.${BASE}-input,.${BASE}-select{box-sizing:border-box;width:100%;padding:7px 9px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));border-radius:8px;outline:none;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:inherit;font-size:13px;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
+.${BASE}-input:focus,.${BASE}-select:focus{border-color:var(--dsw-alias-brand-primary,#2f6feb);background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.09))}
+.${BASE}-panel-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:2px}
+.${BASE}-button{padding:6px 12px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.25));background:var(--dsw-alias-button-elevated-fill,transparent);color:var(--dsw-alias-label-primary,#333);font-size:12.5px;cursor:pointer}
+.${BASE}-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+.${BASE}-button:disabled{opacity:.5;cursor:default}
+.${BASE}-button-primary{border-color:transparent;background:var(--dsw-alias-button-primary-fill,#2f6feb);color:var(--dsw-alias-label-primary-foreground,#fff)}
+.${BASE}-button-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,#2560d0)}
+.${BASE}-notice{margin-top:6px;padding:10px;border-radius:9px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1.6}
+.${BASE}-notice-title{color:var(--dsw-alias-label-primary,#333);font-weight:600;font-size:12.5px}
+.${BASE}-notice-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.${BASE}-notice-line{margin-top:6px;padding:7px 9px;border-radius:8px;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
+.${BASE}-error{margin-top:6px;color:var(--dsw-alias-state-error-primary,#d33);font-size:11.5px;line-height:1.5}
 `;
 		const insertStyles = () => {
 			if (typeof document === "undefined") return;
@@ -492,8 +615,8 @@ window.__ModuleLoader__.load({
 			"stroke-linejoin": "round"
 		}));
 		const SyncIcon = () => h("svg", {
-			width: 12,
-			height: 12,
+			width: 14,
+			height: 14,
 			viewBox: "0 0 16 16",
 			fill: "none",
 			"aria-hidden": "true"
@@ -503,6 +626,30 @@ window.__ModuleLoader__.load({
 			"stroke-width": "1.5",
 			"stroke-linecap": "round",
 			"stroke-linejoin": "round"
+		}));
+		const SearchIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", {
+			d: "M11.2 10.2 14 13M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z",
+			stroke: "currentColor",
+			"stroke-width": "1.4",
+			"stroke-linecap": "round"
+		}));
+		const PlusIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", {
+			d: "M8 3.5v9M3.5 8h9",
+			stroke: "currentColor",
+			"stroke-width": "1.5",
+			"stroke-linecap": "round"
 		}));
 		//#endregion
 
@@ -522,6 +669,9 @@ window.__ModuleLoader__.load({
 			const [fetching, setFetching] = React.useState(false);
 			const [query, setQuery] = React.useState("");
 			const [position, setPosition] = React.useState(void 0);
+			const [mode, setMode] = React.useState("list");
+			const [newName, setNewName] = React.useState("");
+			const [baseBranch, setBaseBranch] = React.useState("");
 			const rootRef = React.useRef(void 0);
 			const triggerRef = React.useRef(void 0);
 			const menuRef = React.useRef(void 0);
@@ -545,19 +695,21 @@ window.__ModuleLoader__.load({
 				const menu = menuRef.current;
 				if (trigger === void 0 || menu === void 0) return;
 				const rect = trigger.getBoundingClientRect();
-				const width = menu.offsetWidth;
-				const height = menu.offsetHeight;
 				const MARGIN = 12;
+				const available = Math.max(160, window.innerHeight - MARGIN * 2);
+				const width = menu.offsetWidth;
+				const height = Math.min(menu.offsetHeight, available);
 				let left = Math.min(rect.left, window.innerWidth - width - MARGIN);
 				left = Math.max(left, MARGIN);
 				let top = rect.bottom + 6;
-				if (top + height > window.innerHeight - MARGIN) top = Math.max(MARGIN, rect.top - height - 6);
+				if (top + height > window.innerHeight - MARGIN) top = rect.top - height - 6;
+				top = Math.max(MARGIN, Math.min(top, window.innerHeight - height - MARGIN));
 				setPosition({ left, top });
 			}, []);
 			React.useLayoutEffect(() => {
 				if (open) place();
 				else setPosition(void 0);
-			}, [open, place]);
+			}, [open, mode, place]);
 			React.useEffect(() => {
 				if (!open) return;
 				const onDown = (event) => {
@@ -566,6 +718,11 @@ window.__ModuleLoader__.load({
 				};
 				const onKey = (event) => {
 					if (event.key === "Escape") {
+						if (mode === "create") {
+							setMode("list");
+							setError(void 0);
+							return;
+						}
 						setOpen(false);
 						triggerRef.current?.focus();
 					}
@@ -576,7 +733,7 @@ window.__ModuleLoader__.load({
 					document.removeEventListener("mousedown", onDown);
 					document.removeEventListener("keydown", onKey);
 				};
-			}, [open]);
+			}, [open, mode]);
 			if (status === void 0 || status === null || status.repository !== true) return null;
 			const detached = status.detached === true || status.current === void 0;
 			const label = detached ? t("chip.detached") : status.current;
@@ -588,13 +745,35 @@ window.__ModuleLoader__.load({
 			const filteredRemote = query === ""
 				? remoteRows
 				: remoteRows.filter((ref) => ref.short.toLowerCase().includes(query.toLowerCase()) || ref.name.toLowerCase().includes(query.toLowerCase()));
+			const baseOptions = [
+				...branches.map((branch) => ({ value: branch.name, label: branch.name })),
+				...remoteRows.map((ref) => ({ value: ref.name, label: ref.name }))
+			];
+			const preferredBase = () => {
+				const names = new Set(branches.map((branch) => branch.name));
+				if (names.has("master")) return "master";
+				if (names.has("main")) return "main";
+				if (status.current !== void 0 && names.has(status.current)) return status.current;
+				return branches[0]?.name ?? "";
+			};
 			const openMenu = () => {
 				setConfirming(void 0);
 				setError(void 0);
 				setNotice(void 0);
 				setQuery("");
+				setMode("list");
+				setNewName("");
+				setBaseBranch(preferredBase());
 				setOpen(true);
 				refresh();
+			};
+			const openCreate = () => {
+				setConfirming(void 0);
+				setError(void 0);
+				setNotice(void 0);
+				setMode("create");
+				setNewName("");
+				setBaseBranch((current) => current === "" ? preferredBase() : current);
 			};
 			const fetchRemotes = async () => {
 				if (busy || fetching) return;
@@ -625,10 +804,42 @@ window.__ModuleLoader__.load({
 						confirmed: confirmed === true
 					});
 					if (result?.requireConfirm === true) {
-						setConfirming({ branch: name, dirtyFiles: result.dirtyFiles, targetMissing: result.targetMissing });
+						setConfirming({ action: "switch", branch: name, dirtyFiles: result.dirtyFiles, targetMissing: result.targetMissing });
 					} else {
 						setStatus(result);
 						setConfirming(void 0);
+						await refresh();
+					}
+				} catch (cause) {
+					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const createBranch = async (confirmed) => {
+				if (busy) return;
+				const name = newName.trim();
+				if (name.length === 0) {
+					setError(t("create.nameRequired"));
+					return;
+				}
+				const base = baseBranch === "" ? preferredBase() : baseBranch;
+				setBusy(true);
+				setError(void 0);
+				try {
+					const result = await call("create", {
+						sessionId,
+						name,
+						base,
+						confirmed: confirmed === true
+					});
+					if (result?.requireConfirm === true) {
+						setConfirming({ action: "create", branch: name, base, dirtyFiles: result.dirtyFiles, targetMissing: false });
+					} else {
+						setStatus(result);
+						setConfirming(void 0);
+						setMode("list");
+						setNewName("");
 						await refresh();
 					}
 				} catch (cause) {
@@ -647,11 +858,11 @@ window.__ModuleLoader__.load({
 					"aria-checked": branch.current === true,
 					disabled: busy,
 					onClick: () => pick(branch.name, false)
-				}, branch.current === true ? h(CheckMark, null) : h("span", { style: { width: "14px" } }), h("span", { className: `${BASE}-row-name` }, branch.name), branch.current === true ? h("span", { className: `${BASE}-row-tag` }, t("menu.current")) : null));
+				}, h("span", { className: `${BASE}-row-mark` }, branch.current === true ? h(CheckMark, null) : null), h("span", { className: `${BASE}-row-name` }, branch.name)));
 			const confirmNotice = confirming === void 0 ? null : h("div", { className: `${BASE}-notice` },
-				h("div", null, t("confirm.title")),
+				h("div", { className: `${BASE}-notice-title` }, t("confirm.title")),
 				confirming.dirtyFiles > 0 ? h("div", { style: { marginTop: "4px" } }, t("confirm.dirty", { count: confirming.dirtyFiles })) : null,
-				confirming.targetMissing ? h("div", null, t("confirm.missing", { branch: confirming.branch })) : null,
+				confirming.targetMissing === true ? h("div", null, t("confirm.missing", { branch: confirming.branch })) : null,
 				h("div", { className: `${BASE}-notice-actions` },
 					h("button", {
 						type: "button",
@@ -662,7 +873,7 @@ window.__ModuleLoader__.load({
 						type: "button",
 						className: `${BASE}-button ${BASE}-button-primary`,
 						disabled: busy,
-						onClick: () => pick(confirming.branch, true)
+						onClick: () => confirming.action === "create" ? createBranch(true) : pick(confirming.branch, true)
 					}, t("confirm.ok"))));
 			const remoteBranchRows = filteredRemote.length === 0
 				? null
@@ -675,32 +886,82 @@ window.__ModuleLoader__.load({
 						role: "menuitem",
 						disabled: busy || fetching,
 						onClick: () => pick(ref.name, false)
-					}, h("span", { style: { width: "14px" } }), h("span", { className: `${BASE}-row-name` }, ref.short), h("span", { className: `${BASE}-row-tag` }, ref.remote))));
+					}, h("span", { className: `${BASE}-row-mark` }), h("span", { className: `${BASE}-row-name` }, ref.short), h("span", { className: `${BASE}-row-tag` }, ref.remote))));
 			const errorNotice = error === void 0 ? null : h("div", { className: `${BASE}-error` }, error);
 			const noticeLine = notice === void 0 ? null : h("div", { className: `${BASE}-notice-line` }, notice);
+			const listPanel = h(React.Fragment, null,
+				h("div", { className: `${BASE}-search` },
+					h("span", { className: `${BASE}-search-icon` }, h(SearchIcon, null)),
+					h("input", {
+						className: `${BASE}-filter`,
+						type: "text",
+						value: query,
+						placeholder: t("menu.filter"),
+						onChange: (event) => setQuery(event.target.value)
+					}),
+					h("button", {
+						type: "button",
+						className: `${BASE}-icon-button`,
+						disabled: busy || fetching,
+						"data-busy": fetching ? "true" : "false",
+						title: fetching ? t("menu.fetching") : t("menu.fetch"),
+						"aria-label": fetching ? t("menu.fetching") : t("menu.fetch"),
+						onClick: fetchRemotes
+					}, h(SyncIcon, null))),
+				h("div", { className: `${BASE}-list` }, branchRows, remoteBranchRows),
+				h("div", { className: `${BASE}-footer` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-row ${BASE}-row-new`,
+						role: "menuitem",
+						disabled: busy,
+						onClick: openCreate
+					}, h("span", { className: `${BASE}-row-mark` }, h(PlusIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.newBranch")))));
+			const createPanel = h("div", { className: `${BASE}-panel` },
+				h("div", { className: `${BASE}-panel-title` }, t("create.title")),
+				h("div", { className: `${BASE}-panel-hint` }, t("menu.createHint")),
+				h("label", { className: `${BASE}-field` },
+					h("span", { className: `${BASE}-field-label` }, t("create.name")),
+					h("input", {
+						className: `${BASE}-input`,
+						type: "text",
+						value: newName,
+						placeholder: t("create.namePlaceholder"),
+						autoFocus: true,
+						onChange: (event) => setNewName(event.target.value),
+						onKeyDown: (event) => {
+							if (event.key === "Enter") {
+								event.preventDefault();
+								createBranch(false);
+							}
+						}
+					})),
+				h("label", { className: `${BASE}-field` },
+					h("span", { className: `${BASE}-field-label` }, t("create.base")),
+					h("select", {
+						className: `${BASE}-select`,
+						value: baseBranch === "" ? preferredBase() : baseBranch,
+						onChange: (event) => setBaseBranch(event.target.value)
+					}, baseOptions.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),
+				h("div", { className: `${BASE}-panel-actions` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						onClick: () => setMode("list")
+					}, t("create.cancel")),
+					h("button", {
+						type: "button",
+						className: `${BASE}-button ${BASE}-button-primary`,
+						disabled: busy || newName.trim().length === 0,
+						onClick: () => createBranch(false)
+					}, t("create.submit"))));
 			const menu = open ? h("div", {
 				className: `${BASE}-menu`,
 				ref: menuRef,
 				role: "menu",
 				style: position === void 0 ? { visibility: "hidden" } : { left: `${position.left}px`, top: `${position.top}px` }
 			},
-				h("div", { className: `${BASE}-header` },
-					h("span", { className: `${BASE}-title` }, t("menu.title")),
-					h("button", {
-						type: "button",
-						className: `${BASE}-fetch`,
-						disabled: busy || fetching,
-						title: t("menu.fetch"),
-						onClick: fetchRemotes
-					}, h(SyncIcon, null), h("span", null, fetching ? t("menu.fetching") : t("menu.fetch")))),
-				h("input", {
-					className: `${BASE}-filter`,
-					type: "text",
-					value: query,
-					placeholder: t("menu.filter"),
-					onChange: (event) => setQuery(event.target.value)
-				}),
-				h("div", { className: `${BASE}-list` }, branchRows, remoteBranchRows),
+				mode === "create" ? createPanel : listPanel,
 				noticeLine,
 				confirmNotice,
 				errorNotice) : null;

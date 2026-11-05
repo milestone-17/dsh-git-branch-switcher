@@ -106,6 +106,32 @@ try {
 	const confirmed = await service.checkout({ sessionId: "session-1", branch: "main", confirmed: true });
 	assert.equal(confirmed.switched, true, "confirmed switch proceeds");
 
+	const createGuard = await service.create({ sessionId: "session-1", name: "feature/created", base: "main" });
+	assert.equal(createGuard.requireConfirm, true, "creating on a dirty tree asks for confirmation");
+	assert.equal(createGuard.dirtyFiles, 1, "dirty file count reported for the create guard");
+	const created = await service.create({ sessionId: "session-1", name: "feature/created", base: "main", confirmed: true });
+	assert.equal(created.created, true, "create reported");
+	assert.equal(created.createdBranch, "feature/created", "created branch name reported");
+	assert.equal(created.current, "feature/created", "the session sits on the new branch right away");
+	const createdHead = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: repository }).toString().trim();
+	assert.equal(createdHead, "feature/created", "git HEAD moved onto the new branch");
+
+	await assert.rejects(
+		() => service.create({ sessionId: "session-1", name: "feature/created", base: "main" }),
+		(error) => error?.code === "branchSwitcher/branch-exists",
+		"an already existing branch name is rejected"
+	);
+	await assert.rejects(
+		() => service.create({ sessionId: "session-1", name: "feature/other", base: "no-such-branch" }),
+		(error) => error?.code === "branchSwitcher/base-missing",
+		"an unknown base branch is rejected"
+	);
+	await assert.rejects(
+		() => service.create({ sessionId: "session-1", name: "--force", base: "main" }),
+		(error) => error?.code === "branchSwitcher/invalid-branch",
+		"option-like branch names are rejected on create"
+	);
+
 	await assert.rejects(
 		() => service.checkout({ sessionId: "session-1", branch: "--force" }),
 		(error) => error?.code === "branchSwitcher/invalid-branch",
@@ -135,6 +161,10 @@ try {
 	assert.equal(tracked.current, "feature/remote-only", "local tracking branch created and checked out");
 	const upstream = execFileSync("git", ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], { cwd: repository }).toString().trim();
 	assert.equal(upstream, "origin/feature/remote-only", "new branch tracks the remote branch");
+
+	const fromRemote = await service.create({ sessionId: "session-1", name: "feature/from-remote", base: "origin/feature/remote-only" });
+	assert.equal(fromRemote.created, true, "creating from a remote-tracking base works");
+	assert.equal(fromRemote.current, "feature/from-remote", "the session switched onto the branch created from a remote base");
 
 	console.log("host smoke test: ok");
 } finally {

@@ -54,7 +54,8 @@ const scope = {
 	remote: {
 		branchSwitcher: {
 			status: async () => ({ ok: true, value: statusValue }),
-			fetch: async () => ({ ok: true, value: { repository: true, fetched: true, output: "synced" } })
+			fetch: async () => ({ ok: true, value: { repository: true, fetched: true, output: "synced" } }),
+			create: async () => ({ ok: true, value: { repository: true, created: true, createdBranch: "feature/demo", current: "feature/demo" } })
 		}
 	},
 	slots: {
@@ -101,6 +102,11 @@ assert.equal(observed.current, "main");
 const fetched = await props.call("fetch", { sessionId: "session-42" });
 assert.equal(fetched.fetched, true, "fetch call reaches the Remote face");
 assert.equal(fetched.output, "synced", "fetch output is returned to the chip");
+
+const created = await props.call("create", { sessionId: "session-42", name: "feature/demo", base: "master" });
+assert.equal(created.created, true, "create call reaches the Remote face");
+assert.equal(created.createdBranch, "feature/demo", "the new branch name comes back to the chip");
+assert.equal(created.current, "feature/demo", "the session sits on the new branch right away");
 
 await dispose();
 assert.equal(unmounted, true, "remote unmounted on dispose");
