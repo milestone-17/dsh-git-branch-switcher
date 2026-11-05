@@ -52,7 +52,7 @@
           "source": {
             "type": "git",
             "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
-            "commit": "dd5cb35163ca5e89abeb927faceb79f1bd8268b5"
+            "commit": "c45b4137ab0eae45acfdde3eea86f741fa6193a1"
           },
           "engines": {
             "dsh": ">=0.2.1-rc.5"
