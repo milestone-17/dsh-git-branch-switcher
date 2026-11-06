@@ -126,6 +126,11 @@ scope.remote.branchSwitcher.changes = async ({ inferTargetFor }) => ({
 scope.remote.branchSwitcher.push = async () => ({ ok: true, value: pushedValue });
 scope.remote.branchSwitcher.merge = async () => ({ ok: true, value: mergedValue });
 scope.remote.branchSwitcher.mergeAbort = async () => ({ ok: true, value: { repository: true, aborted: true } });
+const stashesValue = { repository: true, stashes: [{ ref: "stash@{0}", message: "wip keep set", branch: "main", files: ["a.txt"], date: "2026-11-06 12:00:00 +0800" }] };
+scope.remote.branchSwitcher.stashList = async () => ({ ok: true, value: stashesValue });
+scope.remote.branchSwitcher.stash = async () => ({ ok: true, value: { stashed: true, ref: "stash@{0}", paths: 2, branch: "main" } });
+scope.remote.branchSwitcher.stashApply = async () => ({ ok: true, value: { applied: true, ref: "stash@{0}", popped: true } });
+scope.remote.branchSwitcher.stashDrop = async () => ({ ok: true, value: { dropped: true, all: false } });
 
 const changes = await props.call("changes", { sessionId: "session-42" });
 assert.equal(changes.files.length, 2, "changes rows flow to the chip");
@@ -143,6 +148,19 @@ assert.equal(mergeResult.restoredTo, "feature/x", "the restored branch comes bac
 
 const abortResult = await props.call("mergeAbort", { sessionId: "session-42" });
 assert.equal(abortResult.aborted, true, "mergeAbort call reaches the Remote face");
+
+// --- stash bridge: the four stash methods flow through the same Remote face ---
+const stashes = await props.call("stashList", { sessionId: "session-42" });
+assert.equal(stashes.stashes.length, 1, "stash rows flow to the chip");
+assert.equal(stashes.stashes[0].message, "wip keep set", "the stash message comes back to the chip");
+const stashed = await props.call("stash", { sessionId: "session-42", files: ["a.txt"], message: "wip" });
+assert.equal(stashed.stashed, true, "stash call reaches the Remote face");
+assert.equal(stashed.ref, "stash@{0}", "the stash reference comes back to the chip");
+const appliedStash = await props.call("stashApply", { sessionId: "session-42", ref: "stash@{0}", pop: true });
+assert.equal(appliedStash.applied, true, "stashApply call reaches the Remote face");
+assert.equal(appliedStash.popped, true, "the pop flag flows through");
+const droppedStash = await props.call("stashDrop", { sessionId: "session-42", ref: "stash@{0}" });
+assert.equal(droppedStash.dropped, true, "stashDrop call reaches the Remote face");
 
 await dispose();
 assert.equal(unmounted, true, "remote unmounted on dispose");

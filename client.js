@@ -289,6 +289,46 @@ window.__ModuleLoader__.load({
 			"target": zod.z.string(),
 			"confirmed": zod.z.boolean().optional()
 		});
+		const $stash_list_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation.")
+		});
+		const $stash_list_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string()
+		});
+		const $stash_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"files": zod.z.array(zod.z.string()).describe("Checked change paths to stash; empty with includeUntracked to stash everything."),
+			"message": zod.z.string().optional().describe("Optional stash message."),
+			"includeUntracked": zod.z.boolean().optional().describe("Also stash untracked files.")
+		});
+		const $stash_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"files": zod.z.array(zod.z.string()),
+			"message": zod.z.string().optional(),
+			"includeUntracked": zod.z.boolean().optional()
+		});
+		const $stash_apply_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"ref": zod.z.string().describe("Stash reference such as stash@{0}."),
+			"pop": zod.z.boolean().optional().describe("Drop the entry after applying it."),
+			"confirmed": zod.z.boolean().optional().describe("Set after the user confirmed applying onto a dirty tree.")
+		});
+		const $stash_apply_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"ref": zod.z.string(),
+			"pop": zod.z.boolean().optional(),
+			"confirmed": zod.z.boolean().optional()
+		});
+		const $stash_drop_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"ref": zod.z.string().describe("Stash reference such as stash@{0}."),
+			"all": zod.z.boolean().optional().describe("Clear every stash entry instead of one.")
+		});
+		const $stash_drop_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"ref": zod.z.string(),
+			"all": zod.z.boolean().optional()
+		});
 		const changesRequestCodec = () => ({
 			mode: "strict",
 			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#ChangesRequest",
@@ -378,6 +418,122 @@ window.__ModuleLoader__.load({
 					confirmed: { type: "boolean" }
 				},
 				required: ["sessionId", "source", "target"],
+				additionalProperties: false
+			}
+		});
+		const stashListRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashListRequest",
+			create: $stash_list_request,
+			jsonSchema: {
+				type: "object",
+				properties: { sessionId: { type: "string", description: "Session identity of the calling conversation." } },
+				required: ["sessionId"],
+				additionalProperties: true
+			}
+		});
+		const stashListRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashListRequest",
+			create: $stash_list_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: { sessionId: { type: "string" } },
+				required: ["sessionId"],
+				additionalProperties: false
+			}
+		});
+		const stashRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashRequest",
+			create: $stash_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					files: { type: "array", items: { type: "string" }, description: "Checked change paths to stash; empty with includeUntracked to stash everything." },
+					message: { type: "string", description: "Optional stash message." },
+					includeUntracked: { type: "boolean", description: "Also stash untracked files." }
+				},
+				required: ["sessionId", "files"],
+				additionalProperties: true
+			}
+		});
+		const stashRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashRequest",
+			create: $stash_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					files: { type: "array", items: { type: "string" } },
+					message: { type: "string" },
+					includeUntracked: { type: "boolean" }
+				},
+				required: ["sessionId", "files"],
+				additionalProperties: false
+			}
+		});
+		const stashApplyRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashApplyRequest",
+			create: $stash_apply_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					ref: { type: "string", description: "Stash reference such as stash@{0}." },
+					pop: { type: "boolean", description: "Drop the entry after applying it." },
+					confirmed: { type: "boolean", description: "Set after the user confirmed applying onto a dirty tree." }
+				},
+				required: ["sessionId", "ref"],
+				additionalProperties: true
+			}
+		});
+		const stashApplyRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashApplyRequest",
+			create: $stash_apply_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					ref: { type: "string" },
+					pop: { type: "boolean" },
+					confirmed: { type: "boolean" }
+				},
+				required: ["sessionId", "ref"],
+				additionalProperties: false
+			}
+		});
+		const stashDropRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashDropRequest",
+			create: $stash_drop_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					ref: { type: "string", description: "Stash reference such as stash@{0}." },
+					all: { type: "boolean", description: "Clear every stash entry instead of one." }
+				},
+				required: ["sessionId", "ref"],
+				additionalProperties: true
+			}
+		});
+		const stashDropRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashDropRequest",
+			create: $stash_drop_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					ref: { type: "string" },
+					all: { type: "boolean" }
+				},
+				required: ["sessionId", "ref"],
 				additionalProperties: false
 			}
 		});
@@ -633,6 +789,86 @@ window.__ModuleLoader__.load({
 						description: "the refreshed repository state after the merge was aborted.",
 						jsonSchema: { type: "object", additionalProperties: true }
 					}
+				},
+				"branchSwitcher/stashList": {
+					service: "branchSwitcher",
+					description: "List stash entries with the files each one touches.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity.",
+						source: "json",
+						codec: stashListRequestCodec(),
+						strictCodec: stashListRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStashList",
+						create: $status_result,
+						description: "stash rows with reference, message, branch, file paths, and date.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/stash": {
+					service: "branchSwitcher",
+					description: "Stash the checked subset of changes into a new stash entry.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity, checked paths, an optional message, and the untracked flag.",
+						source: "json",
+						codec: stashRequestCodec(),
+						strictCodec: stashRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStash",
+						create: $status_result,
+						description: "the created stash reference, the stashed path count, and the branch.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/stashApply": {
+					service: "branchSwitcher",
+					description: "Apply one stash entry back onto the working tree, optionally popping it.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity, the stash reference, and the pop and confirmation flags.",
+						source: "json",
+						codec: stashApplyRequestCodec(),
+						strictCodec: stashApplyRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStashApply",
+						create: $status_result,
+						description: "a confirmation request, the applied reference, or the conflict listing.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/stashDrop": {
+					service: "branchSwitcher",
+					description: "Drop one stash entry or clear every entry.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity, the stash reference, and the all flag.",
+						source: "json",
+						codec: stashDropRequestCodec(),
+						strictCodec: stashDropRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStashDrop",
+						create: $status_result,
+						description: "whether the entry was dropped.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
 				}
 			}
 		}, zod.z);
@@ -693,6 +929,30 @@ window.__ModuleLoader__.load({
 			"merge.aborted": "Merge aborted; the branch is back to its pre-merge state.",
 			"merge.restored": "Back on {branch}.",
 			"merge.confirmDirty": "The working tree has {count} uncommitted change(s). Merging may mix them into the target branch.",
+			"menu.stash": "Stash",
+			"stash.title": "Stash changes",
+			"stash.hint": "Pick the changes to set aside, then restore them later from the stash list.",
+			"stash.message": "Stash message (optional)",
+			"stash.messagePlaceholder": "wip: what you are setting aside",
+			"stash.includeUntracked": "Also stash untracked files",
+			"stash.submit": "Stash checked",
+			"stash.stashAll": "Stash everything",
+			"stash.done": "Stashed as {ref}.",
+			"stash.nothing": "No changes are checked to stash.",
+			"stash.clean": "The working tree is clean.",
+			"stash.listTitle": "Stash list",
+			"stash.listHint": "Restore an entry onto the current branch, or drop it.",
+			"stash.empty": "No stash entries yet.",
+			"stash.apply": "Apply",
+			"stash.pop": "Apply & drop",
+			"stash.drop": "Drop",
+			"stash.dropAll": "Clear all",
+			"stash.applied": "Applied {ref}.",
+			"stash.appliedPopped": "Applied and dropped {ref}.",
+			"stash.dropped": "Dropped {ref}.",
+			"stash.droppedAll": "All stash entries cleared.",
+			"stash.confirmDirty": "The working tree has {count} uncommitted change(s). Applying may conflict with them.",
+			"stash.files": "{count} file(s)",
 			"kind.added": "added",
 			"kind.modified": "modified",
 			"kind.deleted": "deleted",
@@ -760,6 +1020,30 @@ window.__ModuleLoader__.load({
 			"merge.aborted": "已放弃合并，分支恢复到合并前的状态。",
 			"merge.restored": "已回到 {branch}。",
 			"merge.confirmDirty": "工作区有 {count} 处未提交改动，合并可能会把它们混进目标分支。",
+			"menu.stash": "暂存",
+			"stash.title": "暂存改动",
+			"stash.hint": "勾选要搁置的改动，之后随时可以从暂存列表恢复。",
+			"stash.message": "暂存描述（可选）",
+			"stash.messagePlaceholder": "wip: 描述你搁置的内容",
+			"stash.includeUntracked": "同时暂存未跟踪的文件",
+			"stash.submit": "暂存所选",
+			"stash.stashAll": "全部暂存",
+			"stash.done": "已存入 {ref}。",
+			"stash.nothing": "没有勾选任何改动可以暂存。",
+			"stash.clean": "工作区是干净的。",
+			"stash.listTitle": "暂存列表",
+			"stash.listHint": "把某条暂存恢复到当前分支，或者删掉它。",
+			"stash.empty": "还没有暂存条目。",
+			"stash.apply": "恢复",
+			"stash.pop": "恢复并删除",
+			"stash.drop": "删除",
+			"stash.dropAll": "清空全部",
+			"stash.applied": "已恢复 {ref}。",
+			"stash.appliedPopped": "已恢复并删除 {ref}。",
+			"stash.dropped": "已删除 {ref}。",
+			"stash.droppedAll": "已清空全部暂存。",
+			"stash.confirmDirty": "工作区有 {count} 处未提交改动，恢复暂存可能与它们冲突。",
+			"stash.files": "{count} 个文件",
 			"kind.added": "新增",
 			"kind.modified": "修改",
 			"kind.deleted": "删除",
@@ -875,6 +1159,12 @@ window.__ModuleLoader__.load({
 .${BASE}-notice{margin-top:6px;padding:10px 11px;border-radius:var(--${BASE}-r-item);border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1.6;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 .${BASE}-notice-title{color:var(--dsw-alias-label-primary,#333);font-weight:600;font-size:12.5px}
 .${BASE}-notice-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.${BASE}-stash-item{border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.2));border-radius:var(--${BASE}-r-item);padding:8px 9px;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.04));animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
+.${BASE}-stash-top{display:flex;align-items:center;gap:6px;min-width:0}
+.${BASE}-stash-msg{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-stash-branch{flex:0 0 auto;padding:1px 7px;border-radius:var(--${BASE}-r-pill);background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.1));color:var(--dsw-alias-label-tertiary,#999);font-size:11px;line-height:1.5;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
+.${BASE}-stash-files{margin-top:3px;color:var(--dsw-alias-label-tertiary,#999);font-size:11px;line-height:1.5}
+.${BASE}-stash-actions{display:flex;gap:6px;margin-top:7px;justify-content:flex-end}
 .${BASE}-notice-line{margin-top:6px;padding:7px 10px;border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 .${BASE}-error{margin-top:6px;color:var(--dsw-alias-state-error-primary,#d33);font-size:11.5px;line-height:1.5;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 `;
@@ -996,6 +1286,24 @@ window.__ModuleLoader__.load({
 			r: 1.4,
 			fill: "currentColor"
 		}));
+		const StashIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", {
+			d: "M2.5 4.5h11M2.5 8h11M2.5 11.5h6",
+			stroke: "currentColor",
+			"stroke-width": "1.4",
+			"stroke-linecap": "round"
+		}), h("path", {
+			d: "M11 13.5l1.8-1.8M11 13.5l1.8 1.2",
+			stroke: "currentColor",
+			"stroke-width": "1.4",
+			"stroke-linecap": "round",
+			"stroke-linejoin": "round"
+		}));
 		//#endregion
 
 		//#region chip
@@ -1026,6 +1334,12 @@ window.__ModuleLoader__.load({
 			const [mergeTarget, setMergeTarget] = React.useState("");
 			const [mergeInferred, setMergeInferred] = React.useState(false);
 			const [mergeState, setMergeState] = React.useState(void 0);
+			const [stashFiles, setStashFiles] = React.useState(void 0);
+			const [stashChecked, setStashChecked] = React.useState({});
+			const [stashMessage, setStashMessage] = React.useState("");
+			const [stashUntracked, setStashUntracked] = React.useState(false);
+			const [stashRows, setStashRows] = React.useState(void 0);
+			const [stashMode, setStashMode] = React.useState("save");
 			const rootRef = React.useRef(void 0);
 			const triggerRef = React.useRef(void 0);
 			const menuRef = React.useRef(void 0);
@@ -1075,7 +1389,7 @@ window.__ModuleLoader__.load({
 				};
 				const onKey = (event) => {
 					if (event.key === "Escape") {
-						if (mode === "create" || mode === "push" || mode === "merge") {
+						if (mode === "create" || mode === "push" || mode === "merge" || mode === "stash") {
 							setMode("list");
 							setError(void 0);
 							return;
@@ -1188,6 +1502,109 @@ window.__ModuleLoader__.load({
 						}
 					} catch {
 					}
+				}
+			};
+			const loadStashSave = async () => {
+				setError(void 0);
+				setNotice(void 0);
+				setMode("stash");
+				setStashMode("save");
+				setStashMessage("");
+				setStashRows(void 0);
+				try {
+					const result = await call("changes", { sessionId });
+					setChanges(result);
+					const nextChecked = {};
+					for (const row of result.files ?? []) nextChecked[row.path] = true;
+					setStashChecked(nextChecked);
+					setStashFiles(result.files ?? []);
+				} catch (cause) {
+					const message = String(cause?.message ?? cause);
+					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
+						? t("push.staleHost")
+						: t("error.failed", { message }));
+				}
+			};
+			const loadStashList = async () => {
+				setError(void 0);
+				setNotice(void 0);
+				setMode("stash");
+				setStashMode("list");
+				setStashFiles(void 0);
+				try {
+					const result = await call("stashList", { sessionId });
+					setStashRows(result.stashes ?? []);
+				} catch (cause) {
+					const message = String(cause?.message ?? cause);
+					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
+						? t("push.staleHost")
+						: t("error.failed", { message }));
+				}
+			};
+			const doStash = async (all) => {
+				if (busy) return;
+				const files = all === true
+					? (stashFiles ?? []).map((row) => row.path)
+					: Object.keys(stashChecked).filter((path) => stashChecked[path] === true);
+				if (files.length === 0 && all !== true) {
+					setError(t("stash.nothing"));
+					return;
+				}
+				setBusy(true);
+				setError(void 0);
+				try {
+					const result = await call("stash", {
+						sessionId,
+						files,
+						...(stashMessage.trim().length > 0 ? { message: stashMessage.trim() } : {}),
+						includeUntracked: stashUntracked === true || all === true
+					});
+					setNotice(t("stash.done", { ref: result.ref ?? "stash@{0}" }));
+					setStashMessage("");
+					setStashChecked({});
+					setStashFiles([]);
+					await refresh();
+				} catch (cause) {
+					const message = String(cause?.message ?? cause);
+					if (cause?.code === "branchSwitcher/nothing-stashed") setError(t("stash.nothing"));
+					else setError(t("error.failed", { message }));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const doStashApply = async (ref, pop, confirmed) => {
+				if (busy) return;
+				setBusy(true);
+				setError(void 0);
+				try {
+					const result = await call("stashApply", { sessionId, ref, pop: pop === true, confirmed: confirmed === true });
+					if (result?.requireConfirm === true) {
+						setConfirming({ action: "stashApply", ref, pop: pop === true, dirtyFiles: result.dirtyFiles });
+					} else if (result?.conflicted === true) {
+						setError(t("merge.conflict", { count: (result.files ?? []).length }));
+					} else {
+						setNotice(pop === true ? t("stash.appliedPopped", { ref }) : t("stash.applied", { ref }));
+						await refresh();
+					}
+				} catch (cause) {
+					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const doStashDrop = async (ref, all) => {
+				if (busy) return;
+				setBusy(true);
+				setError(void 0);
+				try {
+					await call("stashDrop", { sessionId, ref, all: all === true });
+					setNotice(all === true ? t("stash.droppedAll") : t("stash.dropped", { ref }));
+					const listed = await call("stashList", { sessionId });
+					setStashRows(listed.stashes ?? []);
+				} catch (cause) {
+					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
+				} finally {
+					setBusy(false);
 				}
 			};
 			const doPush = async (pushAll) => {
@@ -1358,10 +1775,12 @@ window.__ModuleLoader__.load({
 					onClick: () => pick(branch.name, false)
 				}, h("span", { className: `${BASE}-row-mark` }, branch.current === true ? h(CheckMark, null) : null), h("span", { className: `${BASE}-row-name` }, branch.name)));
 			const confirmNotice = confirming === void 0 ? null : h("div", { className: `${BASE}-notice` },
-				h("div", { className: `${BASE}-notice-title` }, confirming.action === "merge" ? t("merge.title") : t("confirm.title")),
+				h("div", { className: `${BASE}-notice-title` }, confirming.action === "merge" ? t("merge.title") : confirming.action === "stashApply" ? t("stash.listTitle") : t("confirm.title")),
 				confirming.dirtyFiles > 0 ? h("div", { style: { marginTop: "4px" } }, confirming.action === "merge"
 					? t("merge.confirmDirty", { count: confirming.dirtyFiles })
-					: t("confirm.dirty", { count: confirming.dirtyFiles })) : null,
+					: confirming.action === "stashApply"
+						? t("stash.confirmDirty", { count: confirming.dirtyFiles })
+						: t("confirm.dirty", { count: confirming.dirtyFiles })) : null,
 				confirming.targetMissing === true ? h("div", null, t("confirm.missing", { branch: confirming.branch })) : null,
 				h("div", { className: `${BASE}-notice-actions` },
 					h("button", {
@@ -1376,6 +1795,7 @@ window.__ModuleLoader__.load({
 						onClick: () => {
 							if (confirming.action === "create") createBranch(true);
 							else if (confirming.action === "merge") doMerge(true);
+							else if (confirming.action === "stashApply") doStashApply(confirming.ref, confirming.pop, true);
 							else pick(confirming.branch, true);
 						}
 					}, confirming.action === "merge" ? t("merge.submit") : t("confirm.ok"))));
@@ -1434,7 +1854,21 @@ window.__ModuleLoader__.load({
 						role: "menuitem",
 						disabled: busy || branches.length < 2,
 						onClick: loadMerge
-					}, h("span", { className: `${BASE}-row-mark` }, h(MergeIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.merge")))));
+					}, h("span", { className: `${BASE}-row-mark` }, h(MergeIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.merge"))),
+					h("button", {
+						type: "button",
+						className: `${BASE}-row ${BASE}-row-new`,
+						role: "menuitem",
+						disabled: busy,
+						onClick: loadStashSave
+					}, h("span", { className: `${BASE}-row-mark` }, h(StashIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.stash"))),
+					h("button", {
+						type: "button",
+						className: `${BASE}-row ${BASE}-row-new`,
+						role: "menuitem",
+						disabled: busy,
+						onClick: loadStashList
+					}, h("span", { className: `${BASE}-row-mark` }, h(StashIcon, null)), h("span", { className: `${BASE}-row-name` }, t("stash.listTitle")))));
 			const createPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("create.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("menu.createHint")),
@@ -1588,6 +2022,118 @@ window.__ModuleLoader__.load({
 							disabled: busy || mergeSource === "" || mergeTarget === "" || mergeSource === mergeTarget,
 							onClick: () => doMerge(false)
 						}, t("merge.submit")))));
+			const stashChangeRows = (stashFiles ?? []).map((row) => h("label", {
+				key: row.path,
+				className: `${BASE}-checkline`
+			},
+				h("input", {
+					type: "checkbox",
+					checked: stashChecked[row.path] === true,
+					onChange: (event) => setStashChecked((current) => ({ ...current, [row.path]: event.target.checked }))
+				}),
+				h("span", { className: `${BASE}-check-path`, title: row.previousPath !== void 0 ? `${row.previousPath} → ${row.path}` : row.path }, row.path),
+				h("span", { className: `${BASE}-check-kind` }, t(`kind.${row.kind}`))));
+			const stashCheckedCount = Object.values(stashChecked).filter((value) => value === true).length;
+			const stashSavePanel = h("div", { className: `${BASE}-panel` },
+				h("div", { className: `${BASE}-panel-title` }, t("stash.title")),
+				h("div", { className: `${BASE}-panel-hint` }, t("stash.hint")),
+				(stashFiles ?? []).length === 0
+					? h("div", { className: `${BASE}-empty` }, t("stash.clean"))
+					: h(React.Fragment, null,
+						h("div", { className: `${BASE}-list-tools` },
+							h("span", { className: `${BASE}-counter` }, t("push.checked", { count: stashCheckedCount })),
+							h("span", { style: { display: "flex", gap: "4px" } },
+								h("button", {
+									type: "button",
+									className: `${BASE}-link`,
+									onClick: () => setStashChecked((current) => Object.fromEntries(Object.keys(current).map((path) => [path, true])))
+								}, t("push.all")),
+								h("button", {
+									type: "button",
+									className: `${BASE}-link`,
+									onClick: () => setStashChecked((current) => Object.fromEntries(Object.keys(current).map((path) => [path, false])))
+								}, t("push.none")))),
+						h("div", { className: `${BASE}-file-list` }, stashChangeRows),
+						h("label", { className: `${BASE}-field` },
+							h("span", { className: `${BASE}-field-label` }, t("stash.message")),
+							h("input", {
+								className: `${BASE}-input`,
+								type: "text",
+								value: stashMessage,
+								placeholder: t("stash.messagePlaceholder"),
+								onChange: (event) => setStashMessage(event.target.value)
+							})),
+						h("label", { className: `${BASE}-checkline`, style: { cursor: "pointer" } },
+							h("input", {
+								type: "checkbox",
+								checked: stashUntracked === true,
+								onChange: (event) => setStashUntracked(event.target.checked)
+							}),
+							h("span", { className: `${BASE}-check-path` }, t("stash.includeUntracked")))),
+				h("div", { className: `${BASE}-panel-actions` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						onClick: () => setMode("list")
+					}, t("create.cancel")),
+					(stashFiles ?? []).length > 0 ? h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						disabled: busy,
+						onClick: () => doStash(true)
+					}, t("stash.stashAll")) : null,
+					h("button", {
+						type: "button",
+						className: `${BASE}-button ${BASE}-button-primary`,
+						disabled: busy || (stashFiles ?? []).length === 0 || stashCheckedCount === 0,
+						onClick: () => doStash(false)
+					}, t("stash.submit"))));
+			const stashItemRows = (stashRows ?? []).map((row) => h("div", {
+				key: row.ref,
+				className: `${BASE}-stash-item`
+			},
+				h("div", { className: `${BASE}-stash-top` },
+					h("span", { className: `${BASE}-stash-msg`, title: row.message }, row.message),
+					row.branch !== void 0 ? h("span", { className: `${BASE}-stash-branch` }, row.branch) : null),
+				h("div", { className: `${BASE}-stash-files`, title: (row.files ?? []).join("\n") }, t("stash.files", { count: (row.files ?? []).length })),
+				h("div", { className: `${BASE}-stash-actions` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-link`,
+						disabled: busy,
+						onClick: () => doStashApply(row.ref, false, false)
+					}, t("stash.apply")),
+					h("button", {
+						type: "button",
+						className: `${BASE}-link`,
+						disabled: busy,
+						onClick: () => doStashApply(row.ref, true, false)
+					}, t("stash.pop")),
+					h("button", {
+						type: "button",
+						className: `${BASE}-link`,
+						disabled: busy,
+						onClick: () => doStashDrop(row.ref, false)
+					}, t("stash.drop")))));
+			const stashListPanel = h("div", { className: `${BASE}-panel` },
+				h("div", { className: `${BASE}-panel-title` }, t("stash.listTitle")),
+				h("div", { className: `${BASE}-panel-hint` }, t("stash.listHint")),
+				(stashRows ?? []).length === 0
+					? h("div", { className: `${BASE}-empty` }, t("stash.empty"))
+					: h("div", { className: `${BASE}-file-list`, style: { gap: "8px" } }, stashItemRows),
+				h("div", { className: `${BASE}-panel-actions` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						onClick: () => setMode("list")
+					}, t("create.cancel")),
+					(stashRows ?? []).length > 0 ? h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						disabled: busy,
+						onClick: () => doStashDrop("", true)
+					}, t("stash.dropAll")) : null));
+			const stashPanel = stashMode === "list" ? stashListPanel : stashSavePanel;
 			const menu = open ? h("div", {
 				className: `${BASE}-menu ${BASE}-root`,
 				ref: menuRef,
@@ -1597,7 +2143,8 @@ window.__ModuleLoader__.load({
 				mode === "create" ? createPanel
 					: mode === "push" ? pushPanel
 						: mode === "merge" ? mergePanel
-							: listPanel,
+							: mode === "stash" ? stashPanel
+								: listPanel,
 				noticeLine,
 				confirmNotice,
 				errorNotice) : null;
