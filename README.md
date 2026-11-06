@@ -59,10 +59,14 @@ dsh plugin --profile desktop install git+https://gitclone.com/github.com/milesto
 
 ### 方式二：预构建包（无需 git）
 
-[Release v0.3.0](https://github.com/milestone-17/dsh-git-branch-switcher/releases/tag/v0.3.0) 附带 `dsh-git-branch-switcher-0.3.0.tgz`：
+[Release v0.3.0](https://github.com/milestone-17/dsh-git-branch-switcher/releases/tag/v0.3.0) 附带预构建包：
 
 ```bash
-dsh plugin --profile desktop install https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.3.0/dsh-git-branch-switcher-0.3.0.tgz
+# 始终是最新版
+dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz
+
+# 或钉住当前版本
+dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.3.0/dsh-git-branch-switcher-0.3.0.tgz
 ```
 
 ### 方式三：市场索引
