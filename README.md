@@ -1,33 +1,44 @@
 # Git Branch Switcher for DeepSeek Harness
 
-在 DeepSeek Harness 输入框工具行显示当前 git 分支的胶囊按钮，点击弹出 TRAE 风格的分支菜单：一键切换本地分支或远端跟踪分支、一键 `git fetch` 同步远端、**新建分支并立即切换过去**（源分支自己选，默认 master）；存在未提交更改或目标分支缺失时先弹确认。界面文案按浏览器语言自动切换（zh / en）。
+**A composer chip that shows the current git branch of your session's working directory — TRAE-style branch switching, one-click `git fetch`, and create-a-branch-and-switch, all without leaving the chat.**
 
-A composer chip that shows the current git branch of the session's working directory and switches local or remote-tracking branches from a TRAE-style popup menu, with a one-click `git fetch`, branch creation from a chosen base branch, and a confirmation step before switching on a dirty tree.
+在 DeepSeek Harness 输入框工具行显示当前 git 分支的胶囊按钮：TRAE 风格的分支菜单、一键 `git fetch` 同步远端、**新建分支并立即切换过去**（源分支自己选，默认 master）；工作区不干净时先弹确认。界面文案按浏览器语言自动切换（zh / en）。
+
+[![release](https://img.shields.io/github/v/release/milestone-17/dsh-git-branch-switcher?label=release)](https://github.com/milestone-17/dsh-git-branch-switcher/releases)
+[![license](https://img.shields.io/github/license/milestone-17/dsh-git-branch-switcher?label=license)](./LICENSE)
+[![stars](https://img.shields.io/github/stars/milestone-17/dsh-git-branch-switcher?style=flat&label=stars)](https://github.com/milestone-17/dsh-git-branch-switcher/stargazers)
+![DSH](https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2f6feb?logo=deepseek&logoColor=white)
 
 ![Icon](./icon.svg)
 
-![分支切换菜单](./docs/screenshot.png)
+| 分支菜单 / Branch menu | 新建分支 / New branch | 同步远端 / Fetch |
+|---|---|---|
+| ![分支切换菜单](./docs/screenshot.png) | ![新建分支](./docs/screenshot-create.png) | ![同步远端分支](./docs/screenshot-fetch.png) |
 
-![新建分支](./docs/screenshot-create.png)
+## 为什么是它 / Why this one
 
-![同步远端分支](./docs/screenshot-fetch.png)
+- **胶囊在输入框工具行**（slot `conversation.input.left`），紧贴你打字的地方 —— 不用抬头去找会话头部。
+- **远端分支是完整的一等公民**：一键 `git fetch --all --prune`，远端跟踪分支单独分组，可一键检出为本地跟踪分支。
+- **能建分支**：菜单底部「＋ 新建分支」，选好源分支（默认 `master`）点「创建并切换」，当前会话的工作目录**立刻**落到新分支。
+- **不猜你的意图**：工作区不干净、目标分支不存在时先弹确认；分支名做白名单校验，不给 git 注入留口子。
+- **会话级**：每个会话按各自的工作目录独立显示分支；非 git 目录自动隐藏。
+- **纯本地**：只在本地跑 git，除 `git fetch` 外不碰网络，不上传任何数据。
 
-## 功能 / Features
+## 功能对照 / Feature map
 
-- 胶囊显示当前分支（游离 HEAD 时显示“游离 HEAD”），位于输入框工具行左侧（slot `conversation.input.left`）。
-- 点击弹出 TRAE 风格分支菜单：顶部搜索框（右侧是「同步远端分支」图标按钮），中部本地分支列表（按最近提交排序，最多 500 条），底部「＋ 新建分支」。
-- **一键同步远端分支**：搜索框右侧的同步按钮执行 `git fetch --all --prune`；完成后远端跟踪分支出现在「远端分支」分组，并提示同步结果（失败时显示 git 的错误信息）。
-- **切到远端分支**：点「远端分支」里的条目即可切换；本地没有同名分支时自动执行 `git switch --track` 创建本地跟踪分支（上游即所选远端分支）。
-- **新建分支**：菜单底部「＋ 新建分支」打开表单，填写分支名称、选择源分支（默认为 `master`，没有则 `main`，再没有则当前分支；也可选远端跟踪分支），点「创建并切换」后 `git switch -c <新分支> <源分支>`，当前会话的工作目录**立刻**落到新分支上，胶囊同步刷新。
-- 切换或新建分支前若工作区不干净，弹出确认对话框。
-- 非 git 目录自动隐藏，不影响其他会话。
-- 会话级数据：每个会话根据各自的工作目录独立显示分支。
+| | 说明 |
+|---|---|
+| 当前分支胶囊 | 输入框工具行左侧；游离 HEAD 显示「游离 HEAD」；非 git 目录自动隐藏 |
+| TRAE 风格菜单 | 顶部搜索框、本地/远端分组、当前分支勾选高亮、远端名胶囊标签、底部「＋ 新建分支」 |
+| 切换本地分支 | `git switch`，按最近提交排序，最多 500 条 |
+| 切到远端分支 | 本地无同名分支时自动 `git switch --track` 建本地跟踪分支 |
+| 一键同步远端 | `git fetch --all --prune`，完成后提示结果，失败时显示 git 原始错误 |
+| 新建分支并切换 | 选源分支（默认 `master` → `main` → 当前分支，也可选远端跟踪分支），`git switch -c` 后会话立即切过去 |
+| 安全确认 | 脏工作区切换/新建前确认；分支名白名单校验 |
 
 ## 安装 / Install
 
 ### 方式一：Git 源安装（推荐）
-
-在 DeepSeek Harness 插件页 →「发现」→「添加市场索引」填入本仓库的索引地址，或直接用 CLI：
 
 ```bash
 dsh plugin --profile desktop install git+https://github.com/milestone-17/dsh-git-branch-switcher.git
@@ -40,35 +51,40 @@ dsh plugin --profile desktop install git+https://ghproxy.net/https://github.com/
 dsh plugin --profile desktop install git+https://gitclone.com/github.com/milestone-17/dsh-git-branch-switcher.git
 ```
 
-市场索引（自建市场或第三方 index 服务可直接引用）：
+### 方式二：预构建包（无需 git）
+
+[Release v0.3.0](https://github.com/milestone-17/dsh-git-branch-switcher/releases/tag/v0.3.0) 附带 `dsh-git-branch-switcher-0.3.0.tgz`：
+
+```bash
+dsh plugin --profile desktop install https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.3.0/dsh-git-branch-switcher-0.3.0.tgz
+```
+
+### 方式三：市场索引
+
+本仓库自带 `market-index.json`（DSH 官方格式，format-1），部署到任意静态地址后在插件页「发现」里添加该 URL，即可在市场里看到并一键安装：
 
 ```
 https://ghproxy.net/https://raw.githubusercontent.com/milestone-17/dsh-git-branch-switcher/master/market-index.json
 ```
 
-### 方式二：本地目录安装
-
-在插件页选择「安装本地包」指向本仓库目录，或：
+### 方式四：本地目录安装
 
 ```bash
 dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher
 ```
 
-### 重要：安装后需要重启 DeepSeek Harness 应用
+### ⚠️ 安装后需要重启 DeepSeek Harness 应用
 
-插件图在应用启动时组装，安装/更新/卸载插件后**重启应用才会生效**（正在运行的会话不受影响，重启后从侧栏恢复即可）。若重启后仍看不到分支胶囊，先确认会话的工作目录确实是一个 git 仓库——非 git 目录下胶囊会按设计自动隐藏。
+插件图在应用启动时组装，安装/更新/卸载插件后**重启应用才会生效**（正在运行的会话不受影响，重启后从侧栏恢复即可）。若重启后仍看不到分支胶囊，先确认会话的工作目录确实是一个 git 仓库 —— 非 git 目录下胶囊会按设计自动隐藏。
 
-### 方式三：自建插件市场索引
+## 收录状态 / Where to find it
 
-DSH 目前没有面向第三方的官方插件市场；插件页「发现」选项卡接受自定义市场索引 URL。把本仓库的 `market-index.json` 部署到任意静态地址（例如 GitHub Pages 或 raw 文件地址），然后在插件页「发现」里添加该 URL，即可看到并安装本插件。
+- 社区插件目录 [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（PR: [#12252](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/12252)）—— 该目录是 [dsh-market](https://github.com/dsh-market/dsh-market) 市场插件目录的来源，合并后市场自动收录。
+- 社区插件注册表 [zhu1090093659/dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins/pull/82)。
+- 仓库带 `dsh-plugin` / `deepseek-harness` GitHub topic，可按主题检索。
+- 能力卡：[unStone/dsh-xray](https://unstone.github.io/dsh-xray/p/milestone-17__dsh-git-branch-switcher.html)（C3：可 spawn 子进程 / 执行系统命令 —— git 类插件的正常评级）。
 
-```
-https://<your-host>/dsh-plugins/market-index.json
-```
-
-本插件已提交收录到社区插件目录 [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（PR: [#12252](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/12252)），该目录是 [dsh-market](https://github.com/dsh-market/dsh-market) 市场插件的目录来源，合并后市场会自动收录；同时也登记在社区插件注册表 [zhu1090093659/dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins/pull/82)。仓库同时带有 `dsh-plugin` GitHub topic，可被按主题检索。
-
-发布新版本时：更新 `market-index.json` 里 `versions[0].version`、`publishTimestamp`（Unix 秒）与 `source.commit`（40 位完整 commit SHA），推送到仓库即可。
+发布新版本时：更新 `market-index.json` 里 `versions[0].version`、`publishTimestamp`（Unix 秒）与 `source.commit`（40 位完整 commit SHA），并在 GitHub Release 附上新的 `.tgz`，推送到仓库即可。
 
 ## 工作原理 / How it works
 
