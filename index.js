@@ -38,7 +38,7 @@ const MAX_BRANCHES = 500;
 const MAX_STASHES = 50;
 const MAX_FETCH_OUTPUT = 400;
 const STATUS_CACHE_MS = 3000;
-const NOT_A_REPOSITORY = /not\s+a\s+git\s+repository/iu;
+const TOPLEVEL_CACHE_MS = 600000;
 
 /** Mark one prototype method as a direct Remote call, replacing the decorator in plain JS. */
 function markRemote(prototype, method) {
@@ -108,6 +108,8 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		this.config = config;
 		/** @type {Map<string, {at: number, value: object}>} short-lived status cache keyed by toplevel, so switching conversations renders instantly. */
 		this.statusCache = new Map();
+		/** @type {Map<string, {at: number, value: string}>} session -> repository root cache, skipping agent resolution on the hot path. */
+		this.toplevelCache = new Map();
 	}
 
 	/**
@@ -117,15 +119,12 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	 * @returns Repository presence, current branch, branch rows, and change count.
 	 */
 	async status(request, signal) {
-		const cwd = await this.sessionDirectory(request.sessionId, signal);
-		const top = await runGit(this.ctx, cwd, ["rev-parse", "--show-toplevel"], signal);
-		if (top.exitCode !== 0) {
-			if (NOT_A_REPOSITORY.test(top.stderr) || NOT_A_REPOSITORY.test(top.stdout)) {
-				return { repository: false };
-			}
+		let toplevel;
+		try {
+			toplevel = await this.requireToplevelCached(request.sessionId, signal);
+		} catch {
 			return { repository: false };
 		}
-		const toplevel = top.stdout.trim();
 		const cached = this.statusCache.get(toplevel);
 		if (cached !== undefined && Date.now() - cached.at < STATUS_CACHE_MS) {
 			return cached.value;
@@ -310,18 +309,22 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	 * @returns Typed change rows, the unpushed count, and optionally the inferred merge target.
 	 */
 	async changes(request, signal) {
-		const toplevel = await this.requireToplevel(request.sessionId, signal);
+		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
 		const statusOut = await runGit(this.ctx, toplevel, ["status", "--porcelain", "-z"], signal);
 		if (statusOut.exitCode !== 0) {
 			throw new RemoteError("branchSwitcher/status-failed", gitMessage(statusOut, "git status failed"), {});
 		}
 		const files = this.parseChanges(statusOut.stdout);
-		const head = await runGit(this.ctx, toplevel, ["rev-parse", "--abbrev-ref", "HEAD"], signal);
+		// All independent reads go out in one round; a cold changes call costs
+		// two git spawn rounds total (this status plus the parallel block).
+		const [head, unpushed, remotes, merging] = await Promise.all([
+			runGit(this.ctx, toplevel, ["rev-parse", "--abbrev-ref", "HEAD"], signal),
+			this.unpushedCount(toplevel, signal),
+			runGit(this.ctx, toplevel, ["remote"], signal),
+			this.mergingInProgress(toplevel, signal)
+		]);
 		const current = head.exitCode === 0 ? head.stdout.trim() : "";
 		const detached = current === "" || current === "HEAD";
-		const unpushed = await this.unpushedCount(toplevel, signal);
-		const remotes = await runGit(this.ctx, toplevel, ["remote"], signal);
-		const merging = await this.mergingInProgress(toplevel, signal);
 		const result = {
 			repository: true,
 			toplevel,
@@ -600,6 +603,26 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	}
 
 	/**
+	 * Cached requireToplevel: the session directory rarely changes mid-session,
+	 * so repeat calls skip both the agent resolution and the rev-parse spawn
+	 * until the TTL lapses or the cached root stops matching reality.
+	 * @param sessionId - Session identity.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns The repository toplevel directory.
+	 */
+	async requireToplevelCached(sessionId, signal) {
+		const cached = this.toplevelCache.get(sessionId);
+		if (cached !== undefined && Date.now() - cached.at < TOPLEVEL_CACHE_MS) return cached.value;
+		const value = await this.requireToplevel(sessionId, signal);
+		this.toplevelCache.set(sessionId, { at: Date.now(), value });
+		if (this.toplevelCache.size > 16) {
+			const oldest = this.toplevelCache.keys().next().value;
+			this.toplevelCache.delete(oldest);
+		}
+		return value;
+	}
+
+	/**
 	 * Parse `git status --porcelain -z` into typed change rows.
 	 * @param stdout - Nul-delimited porcelain v1 output.
 	 * @returns Change rows with path, original path for renames, and a kind label.
@@ -737,19 +760,26 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	 * @returns Stash rows with index, message, branch, and file paths.
 	 */
 	async stashList(request, signal) {
-		const toplevel = await this.requireToplevel(request.sessionId, signal);
+		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
 		const listing = await runGit(this.ctx, toplevel, [
 			"stash",
 			"list",
 			"--format=%gd%x09%gs%x09%gx",
 			"--date=iso"
 		], signal);
+		const lines = listing.stdout.split(/\r?\n/u).filter((line) => line.trim().length > 0).slice(0, MAX_STASHES);
+		// Every entry's file list is an independent read; fan them out in one
+		// round instead of a serial show per stash.
+		const shows = await Promise.all(lines.map((line) => {
+			const ref = line.split("\t")[0].trim();
+			return runGit(this.ctx, toplevel, ["stash", "show", "--name-only", "--include-untracked", ref], signal)
+				.catch(() => ({ exitCode: 1, stdout: "", stderr: "" }));
+		}));
 		const rows = [];
-		for (const line of listing.stdout.split(/\r?\n/u)) {
-			if (line.trim().length === 0) continue;
+		for (const [index, line] of lines.entries()) {
 			const [ref, subject, stamp = ""] = line.split("\t");
 			if (ref.trim().length === 0) continue;
-			const files = await runGit(this.ctx, toplevel, ["stash", "show", "--name-only", "--include-untracked", ref.trim()], signal);
+			const files = shows[index];
 			// %gs renders "On <branch>: <message>" (or the git default when the
 			// user gave no message); split off the branch from the raw message.
 			const onMatch = /^On\s+([^:]+):\s*(.*)$/u.exec(subject.trim());
@@ -764,7 +794,6 @@ export default class BranchSwitcherService extends TypertRemoteService {
 					: [],
 				...(stamp.trim().length > 0 ? { date: stamp.trim() } : {})
 			});
-			if (rows.length >= MAX_STASHES) break;
 		}
 		return { repository: true, stashes: rows };
 	}

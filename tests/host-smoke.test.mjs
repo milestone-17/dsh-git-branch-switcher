@@ -318,6 +318,20 @@ try {
 	writeFileSync(join(repository, "keep.txt"), "keep work\n");
 	writeFileSync(join(repository, "drop.txt"), "drop work\n");
 	writeFileSync(join(repository, "untracked-stash.txt"), "untracked\n");
+	// a checked untracked file with includeUntracked off must still stash:
+	// the host pre-adds it so the literal pathspec matches (regression for the
+	// "pathspec did not match" error the old build surfaced in the UI)
+	const untrackedOnly = await service.stash({
+		sessionId: "session-1",
+		files: ["untracked-stash.txt"],
+		message: "wip untracked only"
+	});
+	assert.equal(untrackedOnly.stashed, true, "untracked-only stash reported");
+	const untrackedGone = await service.changes({ sessionId: "session-1" });
+	assert.ok(!untrackedGone.files.some((row) => row.path === "untracked-stash.txt"), "untracked file left the tree after stash");
+	const untrackedBack = await service.stashApply({ sessionId: "session-1", ref: untrackedOnly.ref, pop: true, confirmed: true });
+	assert.equal(untrackedBack.applied, true, "untracked-only apply reported");
+	assert.ok(execFileSync("git", ["status", "--porcelain"], { cwd: repository }).toString().includes("untracked-stash.txt"), "untracked file restored");
 	await assert.rejects(
 		() => service.stash({ sessionId: "session-1", files: [] }),
 		(error) => error?.code === "branchSwitcher/nothing-stashed",

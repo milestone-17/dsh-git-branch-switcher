@@ -910,6 +910,7 @@ window.__ModuleLoader__.load({
 			"push.checked": "{count} selected",
 			"push.submit": "Commit & push",
 			"push.clean": "The working tree is clean.",
+			"push.loading": "Loading changes…",
 			"push.pushCommits": "Push {count} commit(s)",
 			"push.done": "Pushed to {upstream}.",
 			"push.noRemote": "This repository has no remote. Add one before pushing.",
@@ -937,6 +938,7 @@ window.__ModuleLoader__.load({
 			"stash.includeUntracked": "Also stash untracked files",
 			"stash.submit": "Stash checked",
 			"stash.stashAll": "Stash everything",
+			"stash.loading": "Loading changes…",
 			"stash.done": "Stashed as {ref}.",
 			"stash.nothing": "No changes are checked to stash.",
 			"stash.clean": "The working tree is clean.",
@@ -1001,6 +1003,7 @@ window.__ModuleLoader__.load({
 			"push.checked": "已选 {count} 项",
 			"push.submit": "提交并推送",
 			"push.clean": "工作区是干净的。",
+			"push.loading": "正在读取改动…",
 			"push.pushCommits": "推送 {count} 个提交",
 			"push.done": "已推送到 {upstream}。",
 			"push.noRemote": "这个仓库还没有配置远端，请先添加远端再推送。",
@@ -1028,6 +1031,7 @@ window.__ModuleLoader__.load({
 			"stash.includeUntracked": "同时暂存未跟踪的文件",
 			"stash.submit": "暂存所选",
 			"stash.stashAll": "全部暂存",
+			"stash.loading": "正在读取改动…",
 			"stash.done": "已存入 {ref}。",
 			"stash.nothing": "没有勾选任何改动可以暂存。",
 			"stash.clean": "工作区是干净的。",
@@ -1462,6 +1466,7 @@ window.__ModuleLoader__.load({
 					setChecked(nextChecked);
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
+					setChanges({ repository: true, files: [], unpushedCount: 0, remotes: [] });
 					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
 						? t("push.staleHost")
 						: t("error.failed", { message }));
@@ -1520,6 +1525,7 @@ window.__ModuleLoader__.load({
 					setStashFiles(result.files ?? []);
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
+					setStashFiles([]);
 					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
 						? t("push.staleHost")
 						: t("error.failed", { message }));
@@ -1536,6 +1542,7 @@ window.__ModuleLoader__.load({
 					setStashRows(result.stashes ?? []);
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
+					setStashRows([]);
 					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
 						? t("push.staleHost")
 						: t("error.failed", { message }));
@@ -1923,11 +1930,13 @@ window.__ModuleLoader__.load({
 			const pushPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("push.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("push.hint")),
-				(changes?.remotes ?? []).length === 0
-					? h("div", { className: `${BASE}-empty` }, t("push.noRemote"))
-					: (changes?.files ?? []).length === 0
-						? h("div", { className: `${BASE}-empty` }, t("push.clean"))
-						: h(React.Fragment, null,
+				changes === void 0
+					? h("div", { className: `${BASE}-empty` }, t("push.loading"))
+					: (changes?.remotes ?? []).length === 0
+						? h("div", { className: `${BASE}-empty` }, t("push.noRemote"))
+						: (changes?.files ?? []).length === 0
+							? h("div", { className: `${BASE}-empty` }, t("push.clean"))
+							: h(React.Fragment, null,
 							h("div", { className: `${BASE}-list-tools` },
 								h("span", { className: `${BASE}-counter` }, t("push.checked", { count: checkedCount })),
 								h("span", { style: { display: "flex", gap: "4px" } },
@@ -1960,7 +1969,7 @@ window.__ModuleLoader__.load({
 					h("button", {
 						type: "button",
 						className: `${BASE}-button ${BASE}-button-primary`,
-						disabled: busy || (changes?.remotes ?? []).length === 0 || (checkedCount === 0 && (changes?.unpushedCount ?? 0) === 0) || (checkedCount > 0 && pushMessage.trim().length === 0),
+						disabled: busy || changes === void 0 || (changes?.remotes ?? []).length === 0 || (checkedCount === 0 && (changes?.unpushedCount ?? 0) === 0) || (checkedCount > 0 && pushMessage.trim().length === 0),
 						onClick: () => doPush(false)
 					}, checkedCount === 0 && (changes?.unpushedCount ?? 0) > 0
 						? t("push.pushCommits", { count: changes.unpushedCount })
@@ -2037,9 +2046,11 @@ window.__ModuleLoader__.load({
 			const stashSavePanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("stash.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("stash.hint")),
-				(stashFiles ?? []).length === 0
-					? h("div", { className: `${BASE}-empty` }, t("stash.clean"))
-					: h(React.Fragment, null,
+				stashFiles === void 0
+					? h("div", { className: `${BASE}-empty` }, t("stash.loading"))
+					: (stashFiles ?? []).length === 0
+						? h("div", { className: `${BASE}-empty` }, t("stash.clean"))
+						: h(React.Fragment, null,
 						h("div", { className: `${BASE}-list-tools` },
 							h("span", { className: `${BASE}-counter` }, t("push.checked", { count: stashCheckedCount })),
 							h("span", { style: { display: "flex", gap: "4px" } },
@@ -2085,7 +2096,7 @@ window.__ModuleLoader__.load({
 					h("button", {
 						type: "button",
 						className: `${BASE}-button ${BASE}-button-primary`,
-						disabled: busy || (stashFiles ?? []).length === 0 || stashCheckedCount === 0,
+						disabled: busy || stashFiles === void 0 || (stashFiles ?? []).length === 0 || stashCheckedCount === 0,
 						onClick: () => doStash(false)
 					}, t("stash.submit"))));
 			const stashItemRows = (stashRows ?? []).map((row) => h("div", {
@@ -2118,9 +2129,11 @@ window.__ModuleLoader__.load({
 			const stashListPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("stash.listTitle")),
 				h("div", { className: `${BASE}-panel-hint` }, t("stash.listHint")),
-				(stashRows ?? []).length === 0
-					? h("div", { className: `${BASE}-empty` }, t("stash.empty"))
-					: h("div", { className: `${BASE}-file-list`, style: { gap: "8px" } }, stashItemRows),
+				stashRows === void 0
+					? h("div", { className: `${BASE}-empty` }, t("stash.loading"))
+					: (stashRows ?? []).length === 0
+						? h("div", { className: `${BASE}-empty` }, t("stash.empty"))
+						: h("div", { className: `${BASE}-file-list`, style: { gap: "8px" } }, stashItemRows),
 				h("div", { className: `${BASE}-panel-actions` },
 					h("button", {
 						type: "button",
