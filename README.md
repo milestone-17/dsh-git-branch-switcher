@@ -41,6 +41,12 @@
 ### 方式一：Git 源安装（推荐）
 
 ```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+等价写法：
+
+```bash
 dsh plugin --profile desktop install git+https://github.com/milestone-17/dsh-git-branch-switcher.git
 ```
 
