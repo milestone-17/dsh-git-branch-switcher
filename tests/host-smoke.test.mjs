@@ -166,6 +166,145 @@ try {
 	assert.equal(fromRemote.created, true, "creating from a remote-tracking base works");
 	assert.equal(fromRemote.current, "feature/from-remote", "the session switched onto the branch created from a remote base");
 
+	// --- changes: typed listing with spaces and Chinese paths, unpushed count ---
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	writeFileSync(join(repository, "with space.txt"), "space\n");
+	writeFileSync(join(repository, "中文路径.md"), "cjk\n");
+	writeFileSync(join(repository, "tracked.txt"), "changed\n");
+	execFileSync("git", ["add", "tracked.txt"], { cwd: repository, stdio: "ignore" });
+	const listed = await service.changes({ sessionId: "session-1" });
+	assert.equal(listed.repository, true, "changes reports repository");
+	assert.equal(listed.current, "main", "changes reports the current branch");
+	const spaceRow = listed.files.find((row) => row.path === "with space.txt");
+	assert.ok(spaceRow !== void 0, "path with a space listed");
+	assert.equal(spaceRow.kind, "untracked", "untracked kind labeled");
+	const cjkRow = listed.files.find((row) => row.path === "中文路径.md");
+	assert.ok(cjkRow !== void 0, "Chinese path listed");
+	const trackedRow = listed.files.find((row) => row.path === "tracked.txt");
+	assert.equal(trackedRow?.kind, "added", "staged new content labeled added");
+	assert.equal(listed.unpushedCount, 0, "main is pushed so the unpushed count is zero");
+	assert.ok(Array.isArray(listed.remotes) && listed.remotes.includes("origin"), "remotes listed");
+	assert.equal(listed.merging, false, "no merge in progress");
+	execFileSync("git", ["checkout", "--", "tracked.txt"], { cwd: repository, stdio: "ignore" });
+	rmSync(join(repository, "with space.txt"), { force: true });
+	rmSync(join(repository, "中文路径.md"), { force: true });
+
+	// --- changes: inferred merge target via dsh-base fallbacks ---
+	const inferred = await service.changes({ sessionId: "session-1", inferTargetFor: "feature/second" });
+	assert.equal(inferred.inferredTarget, "main", "merge target inferred from the recorded pull source");
+
+	// --- push: no remote repository errors first ---
+	const noRemoteRepo = createRepository();
+	const noRemoteCtx = {
+		...ctx,
+		workingDirectory: { defaultDirectory: noRemoteRepo, get: () => noRemoteRepo }
+	};
+	const noRemoteService = new BranchSwitcherService(noRemoteCtx, {});
+	writeFileSync(join(noRemoteRepo, "pending.txt"), "pending\n");
+	await assert.rejects(
+		() => noRemoteService.push({ sessionId: "s", files: ["pending.txt"], message: "m" }),
+		(error) => error?.code === "branchSwitcher/no-remote",
+		"push without a remote is rejected"
+	);
+	rmSync(noRemoteRepo, { recursive: true, force: true });
+
+	// --- push: checked subset commits only those files and establishes upstream ---
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	writeFileSync(join(repository, "pick-me.txt"), "pick\n");
+	writeFileSync(join(repository, "leave-me.txt"), "leave\n");
+	const pushed = await service.push({
+		sessionId: "session-1",
+		files: ["pick-me.txt"],
+		message: "feat: pick one file"
+	});
+	assert.equal(pushed.pushed, true, "push reported");
+	assert.equal(pushed.branch, "main", "pushed branch reported");
+	assert.equal(pushed.upstream, "origin/main", "upstream established");
+	const committedFiles = execFileSync("git", ["show", "--name-only", "--format=", "HEAD"], { cwd: repository }).toString().trim().split(/\r?\n/u);
+	assert.ok(committedFiles.includes("pick-me.txt"), "checked file committed");
+	assert.ok(!committedFiles.includes("leave-me.txt"), "unchecked file left out of the commit");
+	const leftBehind = await service.changes({ sessionId: "session-1" });
+	assert.ok(leftBehind.files.some((row) => row.path === "leave-me.txt"), "unchecked file still pending");
+	const unpushedAfter = leftBehind.unpushedCount;
+	assert.equal(unpushedAfter, 0, "everything pushed so nothing is unpushed");
+	await assert.rejects(
+		() => service.push({ sessionId: "session-1", files: [], pushAll: false, message: "x" }),
+		(error) => error?.code === "branchSwitcher/nothing-staged",
+		"push without checked files or pending commits is rejected"
+	);
+
+	// --- push: clean tree one-shot push of existing commits ---
+	execFileSync("git", ["checkout", "feature/second"], { cwd: repository, stdio: "ignore" });
+	const cleanPush = await service.push({ sessionId: "session-1", files: [], pushAll: true });
+	assert.equal(cleanPush.pushed, true, "clean push reported");
+	assert.equal(cleanPush.branch, "feature/second", "feature branch pushed");
+	assert.equal(cleanPush.upstream, "origin/feature/second", "feature upstream established");
+
+	// --- merge: fast-forward with branch restore + same-branch guard ---
+	rmSync(join(repository, "leave-me.txt"), { force: true });
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	await assert.rejects(
+		() => service.merge({ sessionId: "session-1", source: "main", target: "main" }),
+		(error) => error?.code === "branchSwitcher/invalid-merge",
+		"merging a branch into itself is rejected"
+	);
+	const ffBranch = await service.create({ sessionId: "session-1", name: "feature/ff", base: "main", confirmed: true });
+	assert.equal(ffBranch.created, true, "fast-forward source branch created");
+	writeFileSync(join(repository, "ff.txt"), "ff\n");
+	execFileSync("git", ["add", "-A"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["commit", "-m", "ff commit"], { cwd: repository, stdio: "ignore" });
+	const ff = await service.merge({ sessionId: "session-1", source: "feature/ff", target: "main" });
+	assert.equal(ff.merged, true, "merge reported");
+	assert.equal(ff.mode, "fast-forward", "fast-forward mode detected");
+	assert.equal(ff.restoredTo, "feature/ff", "session restored to the branch it started on");
+	const mainSha = execFileSync("git", ["rev-parse", "main"], { cwd: repository }).toString().trim();
+	const ffSha = execFileSync("git", ["rev-parse", "feature/ff"], { cwd: repository }).toString().trim();
+	assert.equal(mainSha, ffSha, "fast-forward moved main onto the source commit");
+
+	// --- merge: true merge stays put then restores; up-to-date detection ---
+	execFileSync("git", ["checkout", "feature/from-remote"], { cwd: repository, stdio: "ignore" });
+	writeFileSync(join(repository, "diverge.txt"), "diverge\n");
+	execFileSync("git", ["add", "-A"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["commit", "-m", "diverge"], { cwd: repository, stdio: "ignore" });
+	const trueMerge = await service.merge({ sessionId: "session-1", source: "feature/from-remote", target: "main" });
+	assert.equal(trueMerge.merged, true, "true merge reported");
+	assert.equal(trueMerge.mode, "true", "merge mode labeled as a true merge");
+	assert.equal(trueMerge.restoredTo, "feature/from-remote", "session restored to the original branch");
+	const upToDate = await service.merge({ sessionId: "session-1", source: "feature/from-remote", target: "main" });
+	assert.equal(upToDate.merged, true, "up-to-date merge reported");
+	assert.equal(upToDate.mode, "up-to-date", "up-to-date mode detected");
+
+	// --- merge: conflict lists files, abort restores the pre-merge state ---
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	writeFileSync(join(repository, "a.txt"), "main-side\n");
+	execFileSync("git", ["add", "-A"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["commit", "-m", "main-side"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["checkout", "feature/second"], { cwd: repository, stdio: "ignore" });
+	writeFileSync(join(repository, "a.txt"), "feature-side\n");
+	execFileSync("git", ["add", "-A"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["commit", "-m", "feature-side"], { cwd: repository, stdio: "ignore" });
+	const conflict = await service.merge({ sessionId: "session-1", source: "main", target: "feature/second" });
+	assert.equal(conflict.conflicted, true, "conflict reported");
+	assert.ok(conflict.files.includes("a.txt"), "conflicting file listed");
+	const midMerge = await service.changes({ sessionId: "session-1" });
+	assert.equal(midMerge.merging, true, "changes reports the merge in progress");
+	assert.deepEqual(midMerge.conflictFiles, ["a.txt"], "conflict files surfaced by changes");
+	const aborted = await service.mergeAbort({ sessionId: "session-1" });
+	assert.equal(aborted.aborted, true, "abort reported");
+	const afterAbort = await service.changes({ sessionId: "session-1" });
+	assert.equal(afterAbort.merging, false, "no merge left in progress after abort");
+	await assert.rejects(
+		() => service.mergeAbort({ sessionId: "session-1" }),
+		(error) => error?.code === "branchSwitcher/not-merging",
+		"aborting without a merge in progress is rejected"
+	);
+
+	// --- create records the pull source for later merge inference ---
+	const based = await service.create({ sessionId: "session-1", name: "feature/based", base: "main", confirmed: true });
+	assert.equal(based.created, true, "branch created for the base recording check");
+	const recorded = execFileSync("git", ["config", "--get", "branch.feature/based.dsh-base"], { cwd: repository }).toString().trim();
+	assert.equal(recorded, "main", "pull source recorded in local config");
+
 	console.log("host smoke test: ok");
 } finally {
 	rmSync(repository, { recursive: true, force: true });

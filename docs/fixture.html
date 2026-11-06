@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>GBS UI fixture</title>
+<style>
+	body{margin:0;background:linear-gradient(160deg,#eef1f6,#e2e6ee);padding:24px;font-family:"Segoe UI",system-ui,sans-serif}
+	.stage{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+	.slot{position:relative;min-height:40px}
+	.note{margin-top:340px;font-size:12px;color:#667;width:300px}
+</style>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/zod@3.24.1/lib/index.umd.js"></script>
+</head>
+<body>
+<div class="stage">
+	<div><div class="slot" id="slot-list"></div><div class="note">列表 + 三入口 footer（圆角阶梯 / 柔和阴影 / 入场动效）</div></div>
+	<div><div class="slot" id="slot-push"></div><div class="note">推送面板：改动勾选列表 + 全选/全不选 + 提交信息</div></div>
+	<div><div class="slot" id="slot-merge"></div><div class="note">合并面板：冲突视图（文件清单 + 放弃合并）</div></div>
+</div>
+<script>
+(function () {
+	const React = window.React;
+	const ReactDOM = window.ReactDOM;
+	const zodRuntime = window.Zod || (window.zod && (window.zod.z || window.zod));
+	const statusValue = { repository: true, toplevel: "C:/repo", current: "feature/pay", detached: false,
+		branches: [{ name: "master", current: false }, { name: "main", current: false }, { name: "feature/pay", current: true }],
+		remoteBranches: [{ name: "origin/main", short: "main", remote: "origin", local: true }], dirtyLines: 2 };
+	const changesValue = { repository: true, current: "feature/pay",
+		files: [
+			{ path: "src/pay.js", kind: "modified" },
+			{ path: "src/cart/购物车.ts", kind: "modified" },
+			{ path: "docs/支付说明.md", kind: "added" },
+			{ path: "src/legacy.js", kind: "deleted" },
+			{ path: "assets/logo.png", kind: "untracked" }
+		], unpushedCount: 2, remotes: ["origin"], merging: false };
+	const conflicts = { repository: true, current: "feature/pay", files: [], unpushedCount: 0, remotes: ["origin"], merging: true, conflictFiles: ["src/pay.js", "src/cart.js"] };
+	function makeCall(which) {
+		return async (method, input) => {
+			if (method === "status") return statusValue;
+			if (method === "changes") {
+				if (which === "merge") return { ...conflicts, inferredTarget: "main" };
+				if (input && input.inferTargetFor) return { ...changesValue, inferredTarget: "main" };
+				return changesValue;
+			}
+			if (method === "push") return { pushed: true, branch: "feature/pay", upstream: "origin/feature/pay" };
+			if (method === "merge") return which === "merge" || which === "list"
+				? { conflicted: true, files: ["src/pay.js", "src/cart.js"], branch: "feature/pay" }
+				: { merged: true, mode: "fast-forward", restoredTo: "feature/pay" };
+			if (method === "mergeAbort") return { repository: true, aborted: true };
+			return statusValue;
+		};
+	}
+	const calls = { list: makeCall("list"), push: makeCall("push"), merge: makeCall("merge") };
+	const child = {
+		remote: { branchSwitcher: new Proxy({}, {
+			get: (_target, method) => async (input) => {
+				const id = (input && input.sessionId) || "";
+				const which = id.endsWith("-push") ? "push" : id.endsWith("-merge") ? "merge" : "list";
+				return { ok: true, value: await calls[which](method, input) };
+			}
+		}) },
+		slots: {
+			inject(slotName, registrar) {
+				const def = registrar();
+				for (const [which, hostId] of [["list", "slot-list"], ["push", "slot-push"], ["merge", "slot-merge"]]) {
+					const props = def.inject("session-" + which);
+					const host = document.getElementById(hostId);
+					function ChipHost() {
+						return React.createElement(def.component, props);
+					}
+					ReactDOM.createRoot(host).render(React.createElement(ChipHost));
+				}
+			},
+			register(definition, component) {
+				return { name: definition.name, id: definition.id, order: definition.order, inject: definition.inject, component };
+			}
+		}
+	};
+	const ctxPromise = {
+		then(onFulfilled) { return Promise.resolve().then(() => onFulfilled(undefined)); },
+		async dispose() {}
+	};
+	window.__ModuleLoader__ = {
+		load(registration) {
+			try {
+				const exports = registration.factory((specifier) => {
+					if (specifier === "zod") return { z: zodRuntime };
+					if (specifier === "react") return React;
+					throw new Error("unexpected require " + specifier);
+				});
+				Promise.resolve(exports.apply({
+					remote: { async $mount() { return async () => {}; } },
+					inject(keys, callback) { callback(child); return ctxPromise; }
+				})).then(() => { window.__GBS_MOUNTED__ = true; })
+					.catch((error) => { window.__GBS_ERR__ = "apply: " + String(error && error.stack || error).slice(0, 300); });
+			} catch (error) {
+				window.__GBS_ERR__ = "factory: " + String(error && error.stack || error).slice(0, 300);
+			}
+		}
+	};
+	const script = document.createElement("script");
+	script.src = "./client.js";
+	script.onerror = () => { window.__GBS_ERR__ = "client.js script load error"; };
+	document.head.append(script);
+})();
+</script>
+</body>
+</html>

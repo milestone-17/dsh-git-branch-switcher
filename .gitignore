@@ -1,4 +1,9 @@
 node_modules
 pnpm-lock.yaml
 *.log
+dist/
+
+# OpenSpec 变更管理（本地规划文档，不随开源仓库发布）
+openspec/
+.openspec.yaml
 

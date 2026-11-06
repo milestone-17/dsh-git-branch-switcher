@@ -108,6 +108,42 @@ assert.equal(created.created, true, "create call reaches the Remote face");
 assert.equal(created.createdBranch, "feature/demo", "the new branch name comes back to the chip");
 assert.equal(created.current, "feature/demo", "the session sits on the new branch right away");
 
+// --- push/merge bridge: new methods flow through the same Remote face ---
+const changesValue = {
+	repository: true,
+	current: "main",
+	files: [{ path: "a.txt", kind: "modified" }, { path: "new.txt", kind: "untracked" }],
+	unpushedCount: 2,
+	remotes: ["origin"],
+	merging: false
+};
+const pushedValue = { pushed: true, branch: "main", upstream: "origin/main" };
+const mergedValue = { merged: true, mode: "fast-forward", restoredTo: "feature/x", branch: "main" };
+scope.remote.branchSwitcher.changes = async ({ inferTargetFor }) => ({
+	ok: true,
+	value: inferTargetFor === void 0 ? changesValue : { ...changesValue, inferredTarget: "main" }
+});
+scope.remote.branchSwitcher.push = async () => ({ ok: true, value: pushedValue });
+scope.remote.branchSwitcher.merge = async () => ({ ok: true, value: mergedValue });
+scope.remote.branchSwitcher.mergeAbort = async () => ({ ok: true, value: { repository: true, aborted: true } });
+
+const changes = await props.call("changes", { sessionId: "session-42" });
+assert.equal(changes.files.length, 2, "changes rows flow to the chip");
+assert.equal(changes.unpushedCount, 2, "unpushed count flows to the chip");
+const inferred = await props.call("changes", { sessionId: "session-42", inferTargetFor: "feature/x" });
+assert.equal(inferred.inferredTarget, "main", "merge target inference flows to the chip");
+
+const pushResult = await props.call("push", { sessionId: "session-42", files: ["a.txt"], message: "m" });
+assert.equal(pushResult.pushed, true, "push call reaches the Remote face");
+assert.equal(pushResult.upstream, "origin/main", "the established upstream comes back to the chip");
+
+const mergeResult = await props.call("merge", { sessionId: "session-42", source: "feature/x", target: "main" });
+assert.equal(mergeResult.merged, true, "merge call reaches the Remote face");
+assert.equal(mergeResult.restoredTo, "feature/x", "the restored branch comes back to the chip");
+
+const abortResult = await props.call("mergeAbort", { sessionId: "session-42" });
+assert.equal(abortResult.aborted, true, "mergeAbort call reaches the Remote face");
+
 await dispose();
 assert.equal(unmounted, true, "remote unmounted on dispose");
 console.log("client smoke test: ok");

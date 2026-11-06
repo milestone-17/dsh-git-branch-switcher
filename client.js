@@ -257,6 +257,130 @@ window.__ModuleLoader__.load({
 			"base": zod.z.string(),
 			"confirmed": zod.z.boolean().optional()
 		});
+		const $changes_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"inferTargetFor": zod.z.string().optional().describe("Source branch to infer a default merge target for.")
+		});
+		const $changes_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"inferTargetFor": zod.z.string().optional()
+		});
+		const $push_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"files": zod.z.array(zod.z.string()).describe("Checked change paths to stage and commit; empty with pushAll to only push existing commits."),
+			"message": zod.z.string().optional().describe("Commit message used when files are staged."),
+			"pushAll": zod.z.boolean().optional().describe("Push existing commits without staging anything.")
+		});
+		const $push_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"files": zod.z.array(zod.z.string()),
+			"message": zod.z.string().optional(),
+			"pushAll": zod.z.boolean().optional()
+		});
+		const $merge_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"source": zod.z.string().describe("Branch to merge from."),
+			"target": zod.z.string().describe("Branch to merge into."),
+			"confirmed": zod.z.boolean().optional().describe("Set after the user confirmed a dirty tree.")
+		});
+		const $merge_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"source": zod.z.string(),
+			"target": zod.z.string(),
+			"confirmed": zod.z.boolean().optional()
+		});
+		const changesRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#ChangesRequest",
+			create: $changes_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					inferTargetFor: { type: "string", description: "Source branch to infer a default merge target for." }
+				},
+				required: ["sessionId"],
+				additionalProperties: true
+			}
+		});
+		const changesRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#ChangesRequest",
+			create: $changes_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					inferTargetFor: { type: "string" }
+				},
+				required: ["sessionId"],
+				additionalProperties: false
+			}
+		});
+		const pushRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#PushRequest",
+			create: $push_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					files: { type: "array", items: { type: "string" }, description: "Checked change paths to stage and commit; empty with pushAll to only push existing commits." },
+					message: { type: "string", description: "Commit message used when files are staged." },
+					pushAll: { type: "boolean", description: "Push existing commits without staging anything." }
+				},
+				required: ["sessionId", "files"],
+				additionalProperties: true
+			}
+		});
+		const pushRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#PushRequest",
+			create: $push_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					files: { type: "array", items: { type: "string" } },
+					message: { type: "string" },
+					pushAll: { type: "boolean" }
+				},
+				required: ["sessionId", "files"],
+				additionalProperties: false
+			}
+		});
+		const mergeRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MergeRequest",
+			create: $merge_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					source: { type: "string", description: "Branch to merge from." },
+					target: { type: "string", description: "Branch to merge into." },
+					confirmed: { type: "boolean", description: "Set after the user confirmed a dirty tree." }
+				},
+				required: ["sessionId", "source", "target"],
+				additionalProperties: true
+			}
+		});
+		const mergeRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MergeRequest",
+			create: $merge_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					source: { type: "string" },
+					target: { type: "string" },
+					confirmed: { type: "boolean" }
+				},
+				required: ["sessionId", "source", "target"],
+				additionalProperties: false
+			}
+		});
 		const statusRequestCodec = () => ({
 			mode: "strict",
 			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StatusRequest",
@@ -429,6 +553,86 @@ window.__ModuleLoader__.load({
 						description: "a confirmation request, or the repository state after the new branch was created and checked out.",
 						jsonSchema: { type: "object", additionalProperties: true }
 					}
+				},
+				"branchSwitcher/changes": {
+					service: "branchSwitcher",
+					description: "List the working-tree changes and the unpushed commit count.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity and an optional branch to infer a merge target for.",
+						source: "json",
+						codec: changesRequestCodec(),
+						strictCodec: changesRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchChanges",
+						create: $status_result,
+						description: "typed change rows, the unpushed count, and optionally the inferred merge target.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/push": {
+					service: "branchSwitcher",
+					description: "Stage the chosen subset of changes, commit them, and push the branch.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity, checked file paths, commit message, and a push-all flag.",
+						source: "json",
+						codec: pushRequestCodec(),
+						strictCodec: pushRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchPush",
+						create: $status_result,
+						description: "the pushed branch, upstream, and trimmed push output.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/merge": {
+					service: "branchSwitcher",
+					description: "Merge a source branch into a target branch and restore the original branch.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity, source and target branches, and the confirmation flag.",
+						source: "json",
+						codec: mergeRequestCodec(),
+						strictCodec: mergeRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchMerge",
+						create: $status_result,
+						description: "a confirmation request, the merge result, or the conflict listing.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/mergeAbort": {
+					service: "branchSwitcher",
+					description: "Abort the in-progress merge and restore the pre-merge state.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity.",
+						source: "json",
+						codec: statusRequestCodec(),
+						strictCodec: statusRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchMergeAbort",
+						create: $fetch_result,
+						description: "the refreshed repository state after the merge was aborted.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
 				}
 			}
 		}, zod.z);
@@ -452,6 +656,8 @@ window.__ModuleLoader__.load({
 			"menu.remoteTag": "remote",
 			"menu.newBranch": "New branch",
 			"menu.createHint": "Create a branch and switch to it right away.",
+			"menu.push": "Push",
+			"menu.merge": "Merge",
 			"create.title": "New branch",
 			"create.name": "Branch name",
 			"create.namePlaceholder": "feature/my-branch",
@@ -459,6 +665,39 @@ window.__ModuleLoader__.load({
 			"create.cancel": "Cancel",
 			"create.submit": "Create & switch",
 			"create.nameRequired": "Enter a branch name first.",
+			"push.title": "Push changes",
+			"push.hint": "Pick the changes to include, then push them to the remote branch.",
+			"push.commitMessage": "Commit message",
+			"push.messagePlaceholder": "feat: describe your change",
+			"push.all": "Select all",
+			"push.none": "Select none",
+			"push.checked": "{count} selected",
+			"push.submit": "Commit & push",
+			"push.clean": "The working tree is clean.",
+			"push.pushCommits": "Push {count} commit(s)",
+			"push.done": "Pushed to {upstream}.",
+			"push.noRemote": "This repository has no remote. Add one before pushing.",
+			"push.nothingStaged": "No changes are checked and no commits are waiting to push.",
+			"push.staleHost": "The running host is an older version without push support. Restart DeepSeek Harness to enable pushing.",
+			"merge.title": "Merge branches",
+			"merge.hint": "Merge a source branch into a target branch. You will stay on your current branch afterwards.",
+			"merge.source": "Source (merge from)",
+			"merge.target": "Target (merge into)",
+			"merge.targetDefault": "{branch} (inferred)",
+			"merge.same": "Source and target must differ.",
+			"merge.submit": "Merge",
+			"merge.done": "Merged {source} into {target} ({mode}).",
+			"merge.upToDate": "{target} is already up to date with {source}.",
+			"merge.conflict": "Merge conflicts in {count} file(s). Resolve them, commit, or abort.",
+			"merge.abort": "Abort merge",
+			"merge.aborted": "Merge aborted; the branch is back to its pre-merge state.",
+			"merge.restored": "Back on {branch}.",
+			"merge.confirmDirty": "The working tree has {count} uncommitted change(s). Merging may mix them into the target branch.",
+			"kind.added": "added",
+			"kind.modified": "modified",
+			"kind.deleted": "deleted",
+			"kind.renamed": "renamed",
+			"kind.untracked": "untracked",
 			"confirm.title": "Confirm switch",
 			"confirm.dirty": "The working tree has {count} uncommitted change(s). Switching branches may discard them.",
 			"confirm.missing": "Branch \"{branch}\" does not exist locally. Git will create it from the current commit.",
@@ -484,6 +723,8 @@ window.__ModuleLoader__.load({
 			"menu.remoteTag": "远端",
 			"menu.newBranch": "新建分支",
 			"menu.createHint": "创建分支并立即切换过去。",
+			"menu.push": "推送",
+			"menu.merge": "合并",
 			"create.title": "新建分支",
 			"create.name": "分支名称",
 			"create.namePlaceholder": "feature/my-branch",
@@ -491,6 +732,39 @@ window.__ModuleLoader__.load({
 			"create.cancel": "取消",
 			"create.submit": "创建并切换",
 			"create.nameRequired": "请先填写分支名称。",
+			"push.title": "推送改动",
+			"push.hint": "勾选要包含的改动，提交并推送到远端分支。",
+			"push.commitMessage": "提交信息",
+			"push.messagePlaceholder": "feat: 描述你的改动",
+			"push.all": "全选",
+			"push.none": "全不选",
+			"push.checked": "已选 {count} 项",
+			"push.submit": "提交并推送",
+			"push.clean": "工作区是干净的。",
+			"push.pushCommits": "推送 {count} 个提交",
+			"push.done": "已推送到 {upstream}。",
+			"push.noRemote": "这个仓库还没有配置远端，请先添加远端再推送。",
+			"push.nothingStaged": "没有勾选任何改动，也没有待推送的提交。",
+			"push.staleHost": "当前运行的宿主版本较旧，还没有推送能力。请完全退出并重启 DeepSeek Harness 应用后再试。",
+			"merge.title": "合并分支",
+			"merge.hint": "把来源分支合并进目标分支，合并后你会回到原来的分支。",
+			"merge.source": "来源（从这里合并）",
+			"merge.target": "目标（合并到这里）",
+			"merge.targetDefault": "{branch}（推断）",
+			"merge.same": "来源和目标不能是同一个分支。",
+			"merge.submit": "合并",
+			"merge.done": "已把 {source} 合并进 {target}（{mode}）。",
+			"merge.upToDate": "{target} 已包含 {source} 的全部提交，无需合并。",
+			"merge.conflict": "{count} 个文件存在合并冲突。解决后提交，或放弃合并。",
+			"merge.abort": "放弃合并",
+			"merge.aborted": "已放弃合并，分支恢复到合并前的状态。",
+			"merge.restored": "已回到 {branch}。",
+			"merge.confirmDirty": "工作区有 {count} 处未提交改动，合并可能会把它们混进目标分支。",
+			"kind.added": "新增",
+			"kind.modified": "修改",
+			"kind.deleted": "删除",
+			"kind.renamed": "重命名",
+			"kind.untracked": "未跟踪",
 			"confirm.title": "确认切换",
 			"confirm.dirty": "工作区有 {count} 处未提交改动，切换分支可能会丢失这些改动。",
 			"confirm.missing": "本地不存在分支“{branch}”，git 将基于当前提交创建它。",
@@ -513,55 +787,92 @@ window.__ModuleLoader__.load({
 		const BASE = "dshgbs";
 		const STYLE_ID = "dshgbs-styles";
 		const CSS = `
-.${BASE}-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 8px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1;cursor:pointer;max-width:200px;transition:background .12s ease,color .12s ease}
+.${BASE}-root{--${BASE}-r-menu:16px;--${BASE}-r-item:10px;--${BASE}-r-pill:999px;--${BASE}-ease:cubic-bezier(.22,.61,.36,1)}
+.${BASE}-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:var(--${BASE}-r-pill);border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1;cursor:pointer;max-width:200px;transition:background .12s var(--${BASE}-ease),color .12s var(--${BASE}-ease),box-shadow .12s var(--${BASE}-ease)}
 .${BASE}-chip:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-chip:active{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.16))}
 .${BASE}-chip:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
 .${BASE}-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px}
 .${BASE}-icon{flex:0 0 auto;opacity:.85}
-.${BASE}-chevron{flex:0 0 auto;transition:transform .15s ease;opacity:.7}
-.${BASE}-menu{position:fixed;z-index:1200;width:268px;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:6px;border-radius:12px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-overlay,#fff);box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.08);color:var(--dsw-alias-label-primary,#333);font-size:13px;line-height:1.4;user-select:none}
+.${BASE}-chevron{flex:0 0 auto;transition:transform .15s var(--${BASE}-ease);opacity:.7}
+.${BASE}-menu{position:fixed;z-index:1200;width:268px;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:8px;border-radius:var(--${BASE}-r-menu);border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-overlay,#fff);box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 16px rgba(0,0,0,.1),0 16px 40px rgba(0,0,0,.14);color:var(--dsw-alias-label-primary,#333);font-size:13px;line-height:1.4;user-select:none;transform-origin:top left;animation:${BASE}-in .14s var(--${BASE}-ease)}
+@keyframes ${BASE}-in{from{opacity:0;transform:translateY(4px) scale(.985)}to{opacity:1;transform:none}}
+.${BASE}-menu::-webkit-scrollbar{width:6px;height:6px}
+.${BASE}-menu::-webkit-scrollbar-thumb{border-radius:999px;background:rgba(127,127,127,.28)}
+.${BASE}-menu::-webkit-scrollbar-thumb:hover{background:rgba(127,127,127,.45)}
+.${BASE}-menu::-webkit-scrollbar-track{background:transparent}
 .${BASE}-search{display:flex;align-items:center;gap:6px;padding:2px 2px 6px}
 .${BASE}-search-icon{flex:0 0 auto;color:var(--dsw-alias-label-tertiary,#999)}
-.${BASE}-filter{flex:1 1 auto;min-width:0;box-sizing:border-box;padding:6px 8px;border:none;border-radius:7px;outline:none;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.07));color:inherit;font-size:13px}
+.${BASE}-filter{flex:1 1 auto;min-width:0;box-sizing:border-box;padding:6px 10px;border:none;border-radius:var(--${BASE}-r-item);outline:none;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.07));color:inherit;font-size:13px;transition:background .12s var(--${BASE}-ease),box-shadow .12s var(--${BASE}-ease)}
 .${BASE}-filter::placeholder{color:var(--dsw-alias-label-tertiary,#999)}
-.${BASE}-filter:focus{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.11))}
-.${BASE}-icon-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:none;border-radius:7px;background:transparent;color:var(--dsw-alias-label-tertiary,#999);cursor:pointer}
+.${BASE}-filter:hover{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.1))}
+.${BASE}-filter:focus{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.11));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-brand-primary,#2f6feb) 30%,transparent)}
+.${BASE}-icon-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:none;border-radius:var(--${BASE}-r-pill);background:transparent;color:var(--dsw-alias-label-tertiary,#999);cursor:pointer;transition:background .12s var(--${BASE}-ease),color .12s var(--${BASE}-ease)}
 .${BASE}-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-icon-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.16))}
+.${BASE}-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
 .${BASE}-icon-button:disabled{opacity:.55;cursor:default}
 .${BASE}-icon-button[data-busy="true"] svg{animation:${BASE}-spin .9s linear infinite}
 @keyframes ${BASE}-spin{to{transform:rotate(360deg)}}
-.${BASE}-list{max-height:264px;overflow:auto;display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none}
-.${BASE}-row{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:7px 8px;border:none;border-radius:7px;background:transparent;color:inherit;font-size:13px;text-align:left;cursor:pointer}
+.${BASE}-list{max-height:264px;overflow:auto;display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none;scrollbar-width:thin;scrollbar-color:rgba(127,127,127,.3) transparent}
+.${BASE}-list::-webkit-scrollbar{width:6px}
+.${BASE}-list::-webkit-scrollbar-thumb{border-radius:999px;background:rgba(127,127,127,.28)}
+.${BASE}-list::-webkit-scrollbar-thumb:hover{background:rgba(127,127,127,.45)}
+.${BASE}-row{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:7px 9px;border:none;border-radius:var(--${BASE}-r-item);background:transparent;color:inherit;font-size:13px;text-align:left;cursor:pointer;transition:background .12s var(--${BASE}-ease),color .12s var(--${BASE}-ease)}
 .${BASE}-row:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
+.${BASE}-row:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.13))}
+.${BASE}-row:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:-1px}
 .${BASE}-row:disabled{opacity:.5;cursor:default}
 .${BASE}-row[aria-checked="true"]{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.13));color:var(--dsw-alias-brand-primary,#2f6feb);font-weight:500}
 .${BASE}-row-mark{flex:0 0 auto;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center}
 .${BASE}-row-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12.5px}
-.${BASE}-row-tag{flex:0 0 auto;padding:1px 6px;border-radius:5px;background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.1));color:var(--dsw-alias-label-tertiary,#999);font-size:11px;line-height:1.5}
+.${BASE}-row-tag{flex:0 0 auto;padding:1px 7px;border-radius:var(--${BASE}-r-pill);background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.1));color:var(--dsw-alias-label-tertiary,#999);font-size:11px;line-height:1.5}
 .${BASE}-section{margin-top:5px;padding-top:5px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
-.${BASE}-section-title{padding:3px 8px 4px;color:var(--dsw-alias-label-tertiary,#999);font-size:11px;letter-spacing:.02em}
-.${BASE}-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary,#999);font-size:12.5px}
-.${BASE}-footer{margin-top:5px;padding-top:5px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
-.${BASE}-row-new{color:var(--dsw-alias-label-secondary,#888)}
+.${BASE}-section-title{padding:3px 9px 4px;color:var(--dsw-alias-label-tertiary,#999);font-size:11px;letter-spacing:.02em}
+.${BASE}-empty{padding:10px 9px;color:var(--dsw-alias-label-tertiary,#999);font-size:12.5px}
+.${BASE}-footer{margin-top:5px;padding-top:5px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));display:flex;align-items:center;gap:2px}
+.${BASE}-row-new{flex:1 1 0;color:var(--dsw-alias-label-secondary,#888)}
 .${BASE}-row-new:hover:not(:disabled){color:var(--dsw-alias-brand-primary,#2f6feb)}
-.${BASE}-panel{display:flex;flex-direction:column;gap:10px;padding:10px 8px 6px}
+.${BASE}-panel{display:flex;flex-direction:column;gap:10px;padding:10px 8px 6px;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
+@keyframes ${BASE}-panel-in{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
 .${BASE}-panel-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-panel-hint{margin-top:-6px;color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
 .${BASE}-field{display:flex;flex-direction:column;gap:5px}
 .${BASE}-field-label{color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
-.${BASE}-input,.${BASE}-select{box-sizing:border-box;width:100%;padding:7px 9px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));border-radius:8px;outline:none;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:inherit;font-size:13px;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
-.${BASE}-input:focus,.${BASE}-select:focus{border-color:var(--dsw-alias-brand-primary,#2f6feb);background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.09))}
+.${BASE}-input,.${BASE}-select{box-sizing:border-box;width:100%;padding:7px 10px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));border-radius:var(--${BASE}-r-item);outline:none;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:inherit;font-size:13px;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);transition:border-color .12s var(--${BASE}-ease),background .12s var(--${BASE}-ease),box-shadow .12s var(--${BASE}-ease)}
+.${BASE}-input:hover,.${BASE}-select:hover{border-color:var(--dsw-alias-border-l1,rgba(127,127,127,.3))}
+.${BASE}-input:focus,.${BASE}-select:focus{border-color:var(--dsw-alias-brand-primary,#2f6feb);background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.09));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-brand-primary,#2f6feb) 22%,transparent)}
 .${BASE}-panel-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:2px}
-.${BASE}-button{padding:6px 12px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.25));background:var(--dsw-alias-button-elevated-fill,transparent);color:var(--dsw-alias-label-primary,#333);font-size:12.5px;cursor:pointer}
+.${BASE}-button{padding:6px 14px;border-radius:var(--${BASE}-r-item);border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.25));background:var(--dsw-alias-button-elevated-fill,transparent);color:var(--dsw-alias-label-primary,#333);font-size:12.5px;cursor:pointer;transition:background .12s var(--${BASE}-ease),transform .1s var(--${BASE}-ease),box-shadow .12s var(--${BASE}-ease)}
 .${BASE}-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+.${BASE}-button:active:not(:disabled){transform:scale(.97)}
+.${BASE}-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
 .${BASE}-button:disabled{opacity:.5;cursor:default}
 .${BASE}-button-primary{border-color:transparent;background:var(--dsw-alias-button-primary-fill,#2f6feb);color:var(--dsw-alias-label-primary-foreground,#fff)}
 .${BASE}-button-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,#2560d0)}
-.${BASE}-notice{margin-top:6px;padding:10px;border-radius:9px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1.6}
+.${BASE}-checkline{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:var(--${BASE}-r-item);cursor:pointer;transition:background .12s var(--${BASE}-ease)}
+.${BASE}-checkline:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.09))}
+.${BASE}-checkline input[type="checkbox"]{appearance:none;-webkit-appearance:none;flex:0 0 auto;width:15px;height:15px;margin:0;border:1.5px solid var(--dsw-alias-border-l2,rgba(127,127,127,.4));border-radius:5px;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .12s var(--${BASE}-ease),border-color .12s var(--${BASE}-ease)}
+.${BASE}-checkline input[type="checkbox"]:hover{border-color:var(--dsw-alias-brand-primary,#2f6feb)}
+.${BASE}-checkline input[type="checkbox"]:checked{background:var(--dsw-alias-brand-primary,#2f6feb);border-color:var(--dsw-alias-brand-primary,#2f6feb)}
+.${BASE}-checkline input[type="checkbox"]:checked::after{content:"";width:8px;height:8px;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5 6.5 12 13 4.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.${BASE}-checkline input[type="checkbox"]:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
+.${BASE}-check-path{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px;direction:rtl;text-align:left}
+.${BASE}-check-kind{flex:0 0 auto;padding:1px 7px;border-radius:var(--${BASE}-r-pill);background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.1));color:var(--dsw-alias-label-tertiary,#999);font-size:11px;line-height:1.5}
+.${BASE}-file-list{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:1px;margin:0 -2px;padding:0 2px;scrollbar-width:thin;scrollbar-color:rgba(127,127,127,.3) transparent}
+.${BASE}-file-list::-webkit-scrollbar{width:6px}
+.${BASE}-file-list::-webkit-scrollbar-thumb{border-radius:999px;background:rgba(127,127,127,.28)}
+.${BASE}-file-list::-webkit-scrollbar-thumb:hover{background:rgba(127,127,127,.45)}
+.${BASE}-list-tools{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.${BASE}-link{border:none;background:none;padding:2px 4px;border-radius:6px;color:var(--dsw-alias-brand-primary,#2f6feb);font-size:11.5px;cursor:pointer;transition:background .12s var(--${BASE}-ease)}
+.${BASE}-link:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
+.${BASE}-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor)}
+.${BASE}-counter{color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
+.${BASE}-notice{margin-top:6px;padding:10px 11px;border-radius:var(--${BASE}-r-item);border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1.6;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 .${BASE}-notice-title{color:var(--dsw-alias-label-primary,#333);font-weight:600;font-size:12.5px}
 .${BASE}-notice-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
-.${BASE}-notice-line{margin-top:6px;padding:7px 9px;border-radius:8px;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
-.${BASE}-error{margin-top:6px;color:var(--dsw-alias-state-error-primary,#d33);font-size:11.5px;line-height:1.5}
+.${BASE}-notice-line{margin-top:6px;padding:7px 10px;border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
+.${BASE}-error{margin-top:6px;color:var(--dsw-alias-state-error-primary,#d33);font-size:11.5px;line-height:1.5;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 `;
 		const insertStyles = () => {
 			if (typeof document === "undefined") return;
@@ -651,6 +962,36 @@ window.__ModuleLoader__.load({
 			"stroke-width": "1.5",
 			"stroke-linecap": "round"
 		}));
+		const PushIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", {
+			d: "M8 13V3M4.5 6.5 8 3l3.5 3.5",
+			stroke: "currentColor",
+			"stroke-width": "1.5",
+			"stroke-linecap": "round",
+			"stroke-linejoin": "round"
+		}));
+		const MergeIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", {
+			d: "M4.5 2.5v4a3 3 0 0 0 1.2 2.4l3 2.2a3 3 0 0 1 1.2 2.4v0M11.5 2.5v1.9a3 3 0 0 1-1.2 2.4l-1.9 1.4",
+			stroke: "currentColor",
+			"stroke-width": "1.4",
+			"stroke-linecap": "round"
+		}), h("circle", {
+			cx: 4.5,
+			cy: 14,
+			r: 1.4,
+			fill: "currentColor"
+		}));
 		//#endregion
 
 		//#region chip
@@ -672,6 +1013,13 @@ window.__ModuleLoader__.load({
 			const [mode, setMode] = React.useState("list");
 			const [newName, setNewName] = React.useState("");
 			const [baseBranch, setBaseBranch] = React.useState("");
+			const [changes, setChanges] = React.useState(void 0);
+			const [checked, setChecked] = React.useState({});
+			const [pushMessage, setPushMessage] = React.useState("");
+			const [mergeSource, setMergeSource] = React.useState("");
+			const [mergeTarget, setMergeTarget] = React.useState("");
+			const [mergeInferred, setMergeInferred] = React.useState(false);
+			const [mergeState, setMergeState] = React.useState(void 0);
 			const rootRef = React.useRef(void 0);
 			const triggerRef = React.useRef(void 0);
 			const menuRef = React.useRef(void 0);
@@ -718,7 +1066,7 @@ window.__ModuleLoader__.load({
 				};
 				const onKey = (event) => {
 					if (event.key === "Escape") {
-						if (mode === "create") {
+						if (mode === "create" || mode === "push" || mode === "merge") {
 							setMode("list");
 							setError(void 0);
 							return;
@@ -764,6 +1112,10 @@ window.__ModuleLoader__.load({
 				setMode("list");
 				setNewName("");
 				setBaseBranch(preferredBase());
+				setChanges(void 0);
+				setChecked({});
+				setPushMessage("");
+				setMergeState(void 0);
 				setOpen(true);
 				refresh();
 			};
@@ -774,6 +1126,143 @@ window.__ModuleLoader__.load({
 				setMode("create");
 				setNewName("");
 				setBaseBranch((current) => current === "" ? preferredBase() : current);
+			};
+			const loadChanges = async () => {
+				setError(void 0);
+				setNotice(void 0);
+				setMode("push");
+				try {
+					const result = await call("changes", { sessionId });
+					setChanges(result);
+					const nextChecked = {};
+					for (const row of result.files ?? []) nextChecked[row.path] = true;
+					setChecked(nextChecked);
+				} catch (cause) {
+					const message = String(cause?.message ?? cause);
+					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
+						? t("push.staleHost")
+						: t("error.failed", { message }));
+				}
+			};
+			const loadMerge = async () => {
+				setError(void 0);
+				setNotice(void 0);
+				setMode("merge");
+				setMergeState(void 0);
+				let changesSnapshot = changes;
+				if (changesSnapshot === void 0) {
+					try {
+						changesSnapshot = await call("changes", { sessionId });
+						setChanges(changesSnapshot);
+						const nextChecked = {};
+						for (const row of changesSnapshot.files ?? []) nextChecked[row.path] = true;
+						setChecked(nextChecked);
+					} catch {
+						changesSnapshot = void 0;
+					}
+				}
+				const source = status.current ?? branches[0]?.name ?? "";
+				setMergeSource(source);
+				setMergeTarget("");
+				setMergeInferred(false);
+				if (changesSnapshot?.merging === true) {
+					setMergeState({ conflicted: true, files: changesSnapshot.conflictFiles ?? [], branch: status.current ?? "" });
+					return;
+				}
+				if (source !== "" && branches.length > 1) {
+					try {
+						const result = await call("changes", { sessionId, inferTargetFor: source });
+						const inferred = result.inferredTarget;
+						if (typeof inferred === "string" && inferred !== source) {
+							setMergeTarget(inferred);
+							setMergeInferred(true);
+						}
+					} catch {
+					}
+				}
+			};
+			const doPush = async (pushAll) => {
+				if (busy) return;
+				setBusy(true);
+				setError(void 0);
+				try {
+					const files = Object.keys(checked).filter((path) => checked[path] === true);
+					const result = await call("push", {
+						sessionId,
+						files,
+						message: pushMessage,
+						pushAll: pushAll === true
+					});
+					setNotice(t("push.done", { upstream: result.upstream ?? result.branch }));
+					setPushMessage("");
+					const refreshed = await call("changes", { sessionId });
+					setChanges(refreshed);
+					const nextChecked = {};
+					for (const row of refreshed.files ?? []) nextChecked[row.path] = true;
+					setChecked(nextChecked);
+				} catch (cause) {
+					const message = String(cause?.message ?? cause);
+					if (cause?.code === "branchSwitcher/no-remote") setError(t("push.noRemote"));
+					else if (cause?.code === "branchSwitcher/nothing-staged") setError(t("push.nothingStaged"));
+					else setError(t("error.failed", { message }));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const doMerge = async (confirmed) => {
+				if (busy) return;
+				const source = mergeSource;
+				const target = mergeTarget;
+				if (source === "" || target === "") return;
+				if (source === target) {
+					setError(t("merge.same"));
+					return;
+				}
+				setBusy(true);
+				setError(void 0);
+				try {
+					const result = await call("merge", {
+						sessionId,
+						source,
+						target,
+						confirmed: confirmed === true
+					});
+					if (result?.requireConfirm === true) {
+						setConfirming({ action: "merge", source, target, dirtyFiles: result.dirtyFiles });
+					} else if (result?.conflicted === true) {
+						setMergeState({ conflicted: true, files: result.files ?? [], branch: result.branch ?? target });
+						await refresh();
+					} else if (result?.merged === true) {
+						if (result.mode === "up-to-date") {
+							setNotice(t("merge.upToDate", { source, target }));
+						} else {
+							setNotice(t("merge.done", { source, target, mode: result.mode }) + (result.restoredTo !== void 0 ? " " + t("merge.restored", { branch: result.restoredTo }) : ""));
+						}
+						setMergeState(void 0);
+						setMode("list");
+						await refresh();
+					}
+				} catch (cause) {
+					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const doMergeAbort = async () => {
+				if (busy) return;
+				setBusy(true);
+				setError(void 0);
+				try {
+					await call("mergeAbort", { sessionId });
+					setNotice(t("merge.aborted"));
+					setMergeState(void 0);
+					setMode("list");
+					await refresh();
+				} catch (cause) {
+					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
+				} finally {
+					setBusy(false);
+				}
 			};
 			const fetchRemotes = async () => {
 				if (busy || fetching) return;
@@ -860,8 +1349,10 @@ window.__ModuleLoader__.load({
 					onClick: () => pick(branch.name, false)
 				}, h("span", { className: `${BASE}-row-mark` }, branch.current === true ? h(CheckMark, null) : null), h("span", { className: `${BASE}-row-name` }, branch.name)));
 			const confirmNotice = confirming === void 0 ? null : h("div", { className: `${BASE}-notice` },
-				h("div", { className: `${BASE}-notice-title` }, t("confirm.title")),
-				confirming.dirtyFiles > 0 ? h("div", { style: { marginTop: "4px" } }, t("confirm.dirty", { count: confirming.dirtyFiles })) : null,
+				h("div", { className: `${BASE}-notice-title` }, confirming.action === "merge" ? t("merge.title") : t("confirm.title")),
+				confirming.dirtyFiles > 0 ? h("div", { style: { marginTop: "4px" } }, confirming.action === "merge"
+					? t("merge.confirmDirty", { count: confirming.dirtyFiles })
+					: t("confirm.dirty", { count: confirming.dirtyFiles })) : null,
 				confirming.targetMissing === true ? h("div", null, t("confirm.missing", { branch: confirming.branch })) : null,
 				h("div", { className: `${BASE}-notice-actions` },
 					h("button", {
@@ -873,8 +1364,12 @@ window.__ModuleLoader__.load({
 						type: "button",
 						className: `${BASE}-button ${BASE}-button-primary`,
 						disabled: busy,
-						onClick: () => confirming.action === "create" ? createBranch(true) : pick(confirming.branch, true)
-					}, t("confirm.ok"))));
+						onClick: () => {
+							if (confirming.action === "create") createBranch(true);
+							else if (confirming.action === "merge") doMerge(true);
+							else pick(confirming.branch, true);
+						}
+					}, confirming.action === "merge" ? t("merge.submit") : t("confirm.ok"))));
 			const remoteBranchRows = filteredRemote.length === 0
 				? null
 				: h("div", { className: `${BASE}-section` },
@@ -916,7 +1411,21 @@ window.__ModuleLoader__.load({
 						role: "menuitem",
 						disabled: busy,
 						onClick: openCreate
-					}, h("span", { className: `${BASE}-row-mark` }, h(PlusIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.newBranch")))));
+					}, h("span", { className: `${BASE}-row-mark` }, h(PlusIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.newBranch"))),
+					h("button", {
+						type: "button",
+						className: `${BASE}-row ${BASE}-row-new`,
+						role: "menuitem",
+						disabled: busy,
+						onClick: loadChanges
+					}, h("span", { className: `${BASE}-row-mark` }, h(PushIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.push"))),
+					h("button", {
+						type: "button",
+						className: `${BASE}-row ${BASE}-row-new`,
+						role: "menuitem",
+						disabled: busy || branches.length < 2,
+						onClick: loadMerge
+					}, h("span", { className: `${BASE}-row-mark` }, h(MergeIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.merge")))));
 			const createPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("create.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("menu.createHint")),
@@ -955,13 +1464,131 @@ window.__ModuleLoader__.load({
 						disabled: busy || newName.trim().length === 0,
 						onClick: () => createBranch(false)
 					}, t("create.submit"))));
+			const changeRows = (changes?.files ?? []).map((row) => h("label", {
+				key: row.path,
+				className: `${BASE}-checkline`
+			},
+				h("input", {
+					type: "checkbox",
+					checked: checked[row.path] === true,
+					onChange: (event) => setChecked((current) => ({ ...current, [row.path]: event.target.checked }))
+				}),
+				h("span", { className: `${BASE}-check-path`, title: row.previousPath !== void 0 ? `${row.previousPath} → ${row.path}` : row.path }, row.path),
+				h("span", { className: `${BASE}-check-kind` }, t(`kind.${row.kind}`))));
+			const checkedCount = Object.values(checked).filter((value) => value === true).length;
+			const localOptions = branches.map((branch) => ({ value: branch.name, label: branch.name }));
+			const pushPanel = h("div", { className: `${BASE}-panel` },
+				h("div", { className: `${BASE}-panel-title` }, t("push.title")),
+				h("div", { className: `${BASE}-panel-hint` }, t("push.hint")),
+				(changes?.remotes ?? []).length === 0
+					? h("div", { className: `${BASE}-empty` }, t("push.noRemote"))
+					: (changes?.files ?? []).length === 0
+						? h("div", { className: `${BASE}-empty` }, t("push.clean"))
+						: h(React.Fragment, null,
+							h("div", { className: `${BASE}-list-tools` },
+								h("span", { className: `${BASE}-counter` }, t("push.checked", { count: checkedCount })),
+								h("span", { style: { display: "flex", gap: "4px" } },
+									h("button", {
+										type: "button",
+										className: `${BASE}-link`,
+										onClick: () => setChecked((current) => Object.fromEntries(Object.keys(current).map((path) => [path, true])))
+									}, t("push.all")),
+									h("button", {
+										type: "button",
+										className: `${BASE}-link`,
+										onClick: () => setChecked((current) => Object.fromEntries(Object.keys(current).map((path) => [path, false])))
+									}, t("push.none")))),
+							h("div", { className: `${BASE}-file-list` }, changeRows),
+							h("label", { className: `${BASE}-field` },
+								h("span", { className: `${BASE}-field-label` }, t("push.commitMessage")),
+								h("input", {
+									className: `${BASE}-input`,
+									type: "text",
+									value: pushMessage,
+									placeholder: t("push.messagePlaceholder"),
+									onChange: (event) => setPushMessage(event.target.value)
+								}))),
+				h("div", { className: `${BASE}-panel-actions` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						onClick: () => setMode("list")
+					}, t("create.cancel")),
+					h("button", {
+						type: "button",
+						className: `${BASE}-button ${BASE}-button-primary`,
+						disabled: busy || (changes?.remotes ?? []).length === 0 || (checkedCount === 0 && (changes?.unpushedCount ?? 0) === 0) || (checkedCount > 0 && pushMessage.trim().length === 0),
+						onClick: () => doPush(false)
+					}, checkedCount === 0 && (changes?.unpushedCount ?? 0) > 0
+						? t("push.pushCommits", { count: changes.unpushedCount })
+						: t("push.submit"))));
+			const mergeConflict = mergeState?.conflicted === true ? h("div", { className: `${BASE}-notice` },
+				h("div", { className: `${BASE}-notice-title` }, t("merge.conflict", { count: mergeState.files.length })),
+				h("div", { className: `${BASE}-file-list`, style: { marginTop: "6px" } }, mergeState.files.map((path) => h("div", {
+					key: path,
+					className: `${BASE}-checkline`,
+					style: { cursor: "default" }
+				}, h("span", { className: `${BASE}-check-path` }, path)))),
+				h("div", { className: `${BASE}-notice-actions` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						disabled: busy,
+						onClick: doMergeAbort
+					}, t("merge.abort")))) : null;
+			const mergePanel = h("div", { className: `${BASE}-panel` },
+				h("div", { className: `${BASE}-panel-title` }, t("merge.title")),
+				h("div", { className: `${BASE}-panel-hint` }, t("merge.hint")),
+				mergeConflict,
+				mergeState?.conflicted === true ? null : h(React.Fragment, null,
+					h("label", { className: `${BASE}-field` },
+						h("span", { className: `${BASE}-field-label` }, t("merge.source")),
+						h("select", {
+							className: `${BASE}-select`,
+							value: mergeSource,
+							onChange: (event) => {
+								setMergeSource(event.target.value);
+								setMergeTarget((current) => current === event.target.value ? "" : current);
+							}
+						}, localOptions.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),
+					h("label", { className: `${BASE}-field` },
+						h("span", { className: `${BASE}-field-label` }, mergeTarget !== "" && mergeInferred
+							? t("merge.targetDefault", { branch: mergeTarget })
+							: t("merge.target")),
+						h("select", {
+							className: `${BASE}-select`,
+							value: mergeTarget,
+							onChange: (event) => {
+								setMergeTarget(event.target.value);
+								setMergeInferred(false);
+							}
+						}, localOptions.filter((option) => option.value !== mergeSource).map((option) => h("option", {
+							key: option.value,
+							value: option.value
+						}, option.label)))),
+					mergeSource !== "" && mergeTarget !== "" && mergeSource === mergeTarget ? h("div", { className: `${BASE}-error` }, t("merge.same")) : null,
+					h("div", { className: `${BASE}-panel-actions` },
+						h("button", {
+							type: "button",
+							className: `${BASE}-button`,
+							onClick: () => setMode("list")
+						}, t("create.cancel")),
+						h("button", {
+							type: "button",
+							className: `${BASE}-button ${BASE}-button-primary`,
+							disabled: busy || mergeSource === "" || mergeTarget === "" || mergeSource === mergeTarget,
+							onClick: () => doMerge(false)
+						}, t("merge.submit")))));
 			const menu = open ? h("div", {
-				className: `${BASE}-menu`,
+				className: `${BASE}-menu ${BASE}-root`,
 				ref: menuRef,
 				role: "menu",
 				style: position === void 0 ? { visibility: "hidden" } : { left: `${position.left}px`, top: `${position.top}px` }
 			},
-				mode === "create" ? createPanel : listPanel,
+				mode === "create" ? createPanel
+					: mode === "push" ? pushPanel
+						: mode === "merge" ? mergePanel
+							: listPanel,
 				noticeLine,
 				confirmNotice,
 				errorNotice) : null;
