@@ -91,6 +91,10 @@ try {
 	assert.ok(status.branches.some((branch) => branch.name === "main" && branch.current === true), "current marker set");
 	assert.equal(status.dirtyLines, 0, "clean tree reported");
 
+	// --- combined ref parse: cache serves repeats within the TTL ---
+	const cachedAgain = await service.status({ sessionId: "session-1" });
+	assert.equal(cachedAgain, status, "repeat status within the TTL comes from the cache");
+
 	const switched = await service.checkout({ sessionId: "session-1", branch: "feature/second" });
 	assert.equal(switched.switched, true, "switch reported");
 	assert.equal(switched.current, "feature/second", "branch switched");
@@ -98,6 +102,7 @@ try {
 	assert.equal(head, "feature/second", "git HEAD moved");
 
 	writeFileSync(join(repository, "dirty.txt"), "dirty\n");
+	service.invalidateStatus(repository);
 	const dirty = await service.status({ sessionId: "session-1" });
 	assert.equal(dirty.dirtyLines, 1, "dirty file counted");
 	const guard = await service.checkout({ sessionId: "session-1", branch: "main" });
@@ -155,6 +160,7 @@ try {
 	assert.equal(remoteRow.local, false, "remote-only branch marked as not local");
 	const localRow = (fetched.remoteBranches ?? []).find((ref) => ref.name === "origin/main");
 	assert.equal(localRow?.local, true, "remote branch with a local counterpart is marked");
+	assert.ok((fetched.remoteBranches ?? []).every((ref) => ref.short !== "HEAD"), "symbolic remote HEAD excluded from rows");
 
 	const tracked = await service.checkout({ sessionId: "session-1", branch: "origin/feature/remote-only" });
 	assert.equal(tracked.switched, true, "remote branch switch reported");
@@ -188,6 +194,7 @@ try {
 	execFileSync("git", ["checkout", "--", "tracked.txt"], { cwd: repository, stdio: "ignore" });
 	rmSync(join(repository, "with space.txt"), { force: true });
 	rmSync(join(repository, "中文路径.md"), { force: true });
+	service.invalidateStatus(repository);
 
 	// --- changes: inferred merge target via dsh-base fallbacks ---
 	const inferred = await service.changes({ sessionId: "session-1", inferTargetFor: "feature/second" });
@@ -283,6 +290,7 @@ try {
 	writeFileSync(join(repository, "a.txt"), "feature-side\n");
 	execFileSync("git", ["add", "-A"], { cwd: repository, stdio: "ignore" });
 	execFileSync("git", ["commit", "-m", "feature-side"], { cwd: repository, stdio: "ignore" });
+	service.invalidateStatus(repository);
 	const conflict = await service.merge({ sessionId: "session-1", source: "main", target: "feature/second" });
 	assert.equal(conflict.conflicted, true, "conflict reported");
 	assert.ok(conflict.files.includes("a.txt"), "conflicting file listed");

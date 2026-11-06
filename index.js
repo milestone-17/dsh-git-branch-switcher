@@ -30,6 +30,7 @@ const REMOTE_METHOD_DESCRIPTOR = "@deepseek-ai/dsh-typert-protocol/remote-method
 const MAX_GIT_OUTPUT_BYTES = 1 << 20;
 const MAX_BRANCHES = 500;
 const MAX_FETCH_OUTPUT = 400;
+const STATUS_CACHE_MS = 3000;
 const NOT_A_REPOSITORY = /not\s+a\s+git\s+repository/iu;
 
 /** Mark one prototype method as a direct Remote call, replacing the decorator in plain JS. */
@@ -98,6 +99,8 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	constructor(ctx, config) {
 		super(ctx, "branchSwitcher", { namespace: "branchSwitcher" });
 		this.config = config;
+		/** @type {Map<string, {at: number, value: object}>} short-lived status cache keyed by toplevel, so switching conversations renders instantly. */
+		this.statusCache = new Map();
 	}
 
 	/**
@@ -116,33 +119,74 @@ export default class BranchSwitcherService extends TypertRemoteService {
 			return { repository: false };
 		}
 		const toplevel = top.stdout.trim();
-		const head = await runGit(this.ctx, toplevel, ["rev-parse", "--abbrev-ref", "HEAD"], signal);
-		const current = head.exitCode === 0 ? head.stdout.trim() : "";
-		const detached = current === "" || current === "HEAD";
-		const listing = await runGit(this.ctx, toplevel, [
-			"for-each-ref",
-			"--sort=-committerdate",
-			"--format=%(refname:short)%09%(HEAD)",
-			`refs/heads`
-		], signal);
-		const branches = [];
-		for (const line of listing.stdout.split(/\r?\n/u)) {
-			if (line.trim().length === 0) continue;
-			const [name, marker] = line.split("\t");
-			branches.push({ name: name.trim(), current: marker?.trim() === "*" });
-			if (branches.length >= MAX_BRANCHES) break;
+		const cached = this.statusCache.get(toplevel);
+		if (cached !== undefined && Date.now() - cached.at < STATUS_CACHE_MS) {
+			return cached.value;
 		}
-		const remoteBranches = await this.remoteBranches(toplevel, branches, signal);
-		const dirty = await runGit(this.ctx, toplevel, ["status", "--porcelain"], signal);
-		return {
+		// One for-each-ref covers both local and remote refs, and the independent
+		// reads run concurrently, so a cold status costs two git spawns total.
+		const [head, refs, dirty] = await Promise.all([
+			runGit(this.ctx, toplevel, ["rev-parse", "--abbrev-ref", "HEAD"], signal),
+			runGit(this.ctx, toplevel, [
+				"for-each-ref",
+				"--sort=-committerdate",
+				"--format=%(refname)%09%(HEAD)",
+				"refs/heads",
+				"refs/remotes"
+			], signal),
+			runGit(this.ctx, toplevel, ["status", "--porcelain"], signal)
+		]);
+		const rawCurrent = head.exitCode === 0 ? head.stdout.trim() : "";
+		const detached = rawCurrent === "" || rawCurrent === "HEAD";
+		// for-each-ref sorts both refspecs together, so collect local names in a
+		// first pass before marking which remote rows already exist locally.
+		const parsed = [];
+		for (const line of refs.stdout.split(/\r?\n/u)) {
+			if (line.trim().length === 0) continue;
+			const [refname, marker = ""] = line.split("\t");
+			const name = refname.trim();
+			if (name.startsWith("refs/heads/")) {
+				parsed.push({ kind: "local", short: name.slice("refs/heads/".length), current: marker.trim() === "*" });
+			} else if (name.startsWith("refs/remotes/")) {
+				const rest = name.slice("refs/remotes/".length);
+				const slash = rest.indexOf("/");
+				if (slash <= 0) continue;
+				const short = rest.slice(slash + 1);
+				if (short.length === 0 || short === "HEAD") continue;
+				parsed.push({ kind: "remote", name: rest, short, remote: rest.slice(0, slash) });
+			}
+		}
+		const localNames = new Set(parsed.filter((row) => row.kind === "local").map((row) => row.short));
+		const branches = [];
+		const remoteBranches = [];
+		for (const row of parsed) {
+			if (row.kind === "local") {
+				branches.push({ name: row.short, current: row.current });
+			} else {
+				remoteBranches.push({ name: row.name, short: row.short, remote: row.remote, local: localNames.has(row.short) });
+			}
+		}
+		const value = {
 			repository: true,
 			toplevel,
-			current: detached ? undefined : current,
+			current: detached ? undefined : rawCurrent,
 			detached,
-			branches,
-			remoteBranches,
+			branches: branches.slice(0, MAX_BRANCHES),
+			remoteBranches: remoteBranches.slice(0, MAX_BRANCHES),
 			dirtyLines: dirty.exitCode === 0 ? countLines(dirty.stdout) : 0
 		};
+		this.statusCache.set(toplevel, { at: Date.now(), value });
+		if (this.statusCache.size > 8) {
+			const oldest = this.statusCache.keys().next().value;
+			this.statusCache.delete(oldest);
+		}
+		return value;
+	}
+
+	/** Drop the cached status of one repository so the next read re-runs git. */
+	invalidateStatus(toplevel) {
+		// git prints forward slashes while Node callers pass backslashes on Windows.
+		this.statusCache.delete(toplevel.replaceAll("\\", "/"));
 	}
 
 	/**
@@ -163,6 +207,7 @@ export default class BranchSwitcherService extends TypertRemoteService {
 			throw new RemoteError("branchSwitcher/fetch-failed", gitMessage(result, "git fetch failed"), {});
 		}
 		const output = (result.stderr || result.stdout).trim().replace(/\s+/gu, " ").slice(-MAX_FETCH_OUTPUT);
+		this.invalidateStatus(toplevel);
 		return { ...(await this.status(request, signal)), fetched: true, output: output.length > 0 ? output : undefined };
 	}
 
@@ -198,6 +243,7 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		if (result.exitCode !== 0) {
 			throw new RemoteError("branchSwitcher/switch-failed", gitMessage(result, "git switch failed"), {});
 		}
+		this.invalidateStatus(toplevel);
 		return { ...(await this.status(request, signal)), switched: true };
 	}
 
@@ -244,6 +290,7 @@ export default class BranchSwitcherService extends TypertRemoteService {
 			? base
 			: (remoteRefs.find((ref) => ref.name === startPoint) ?? remoteRefs.find((ref) => ref.short === base))?.short ?? base;
 		await runGit(this.ctx, toplevel, ["config", `branch.${name}.dsh-base`, baseLocal], signal);
+		this.invalidateStatus(toplevel);
 		return { ...(await this.status(request, signal)), created: true, createdBranch: name };
 	}
 
@@ -355,6 +402,7 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		}
 		const upstreamAfter = await runGit(this.ctx, toplevel, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], signal);
 		const output = (pushed.stderr || pushed.stdout).trim().replace(/\s+/gu, " ").slice(-MAX_FETCH_OUTPUT);
+		this.invalidateStatus(toplevel);
 		return {
 			pushed: true,
 			branch: current,
@@ -427,6 +475,7 @@ export default class BranchSwitcherService extends TypertRemoteService {
 			const back = await runGit(this.ctx, toplevel, ["switch", original], signal);
 			if (back.exitCode === 0) restoredTo = original;
 		}
+		this.invalidateStatus(toplevel);
 		return { merged: true, mode, restoredTo, branch: target };
 	}
 
@@ -445,25 +494,8 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		if (aborted.exitCode !== 0) {
 			throw new RemoteError("branchSwitcher/abort-failed", gitMessage(aborted, "git merge --abort failed"), {});
 		}
+		this.invalidateStatus(toplevel);
 		return { ...(await this.status(request, signal)), aborted: true };
-	}
-
-	/**
-	 * Collect remote-tracking branches, newest first, and mark the ones whose
-	 * short name already has a local branch.
-	 * @param toplevel - Repository root directory.
-	 * @param branches - Known local branch rows.
-	 * @param signal - Cancellation signal of the Remote call.
-	 * @returns Remote-tracking branch rows.
-	 */
-	async remoteBranches(toplevel, branches, signal) {
-		const localNames = new Set(branches.map((branch) => branch.name));
-		const rows = [];
-		for (const ref of await this.remoteRefs(toplevel, signal)) {
-			rows.push({ name: ref.name, short: ref.short, remote: ref.remote, local: localNames.has(ref.short) });
-			if (rows.length >= MAX_BRANCHES) break;
-		}
-		return rows;
 	}
 
 	/**

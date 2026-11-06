@@ -793,6 +793,10 @@ window.__ModuleLoader__.load({
 .${BASE}-chip:active{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.16))}
 .${BASE}-chip:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
 .${BASE}-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px}
+/* Mirror the native permission chip: the composer row is a size container, so
+   hide the branch text (and the chevron gap) when the row runs out of width. */
+@container (width <= 560px){.${BASE}-label{display:none}.${BASE}-chip{padding:0 7px;gap:0}}
+@container (width <= 460px){.${BASE}-chip .${BASE}-chevron{display:none}.${BASE}-chip{padding:0 6px}}
 .${BASE}-icon{flex:0 0 auto;opacity:.85}
 .${BASE}-chevron{flex:0 0 auto;transition:transform .15s var(--${BASE}-ease);opacity:.7}
 .${BASE}-menu{position:fixed;z-index:1200;width:268px;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:8px;border-radius:var(--${BASE}-r-menu);border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-overlay,#fff);box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 16px rgba(0,0,0,.1),0 16px 40px rgba(0,0,0,.14);color:var(--dsw-alias-label-primary,#333);font-size:13px;line-height:1.4;user-select:none;transform-origin:top left;animation:${BASE}-in .14s var(--${BASE}-ease)}
@@ -997,11 +1001,13 @@ window.__ModuleLoader__.load({
 		//#region chip
 		const SLOT_NAME = "conversation.input.left";
 		const SLOT_ID = "git-branch-switcher";
+		/** Last known status per session, kept across slot remounts so switching conversations renders instantly. */
+		const statusMemory = new Map();
 
 		/** Composer chip: shows the current branch, opens the switcher menu, and mirrors model-selection's popover behavior. */
 		function Chip(props) {
 			const { sessionId, call } = props;
-			const [status, setStatus] = React.useState(void 0);
+			const [status, setStatus] = React.useState(() => statusMemory.get(sessionId));
 			const [open, setOpen] = React.useState(false);
 			const [busy, setBusy] = React.useState(false);
 			const [confirming, setConfirming] = React.useState(void 0);
@@ -1028,7 +1034,10 @@ window.__ModuleLoader__.load({
 				const id = ++requestIdRef.current;
 				try {
 					const next = await call("status", { sessionId });
-					if (id === requestIdRef.current) setStatus(next);
+					if (id === requestIdRef.current) {
+						statusMemory.set(sessionId, next);
+						setStatus(next);
+					}
 				} catch (cause) {
 					if (id !== requestIdRef.current) return;
 					console.warn("[git-branch-switcher] status failed", cause);
