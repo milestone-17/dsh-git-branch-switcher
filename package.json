@@ -1,7 +1,7 @@
 {
   "name": "@luochbiao/dsh-git-branch-switcher",
   "description": "Git branch switcher chip in the composer tool row of the DeepSeek Harness",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "icon": "./icon.svg",
   "type": "module",
   "main": "index.js",
