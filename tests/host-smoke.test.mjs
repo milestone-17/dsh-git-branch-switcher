@@ -313,6 +313,54 @@ try {
 	const recorded = execFileSync("git", ["config", "--get", "branch.feature/based.dsh-base"], { cwd: repository }).toString().trim();
 	assert.equal(recorded, "main", "pull source recorded in local config");
 
+	// --- stash: checked subset stashed, restored, and dropped ---
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	writeFileSync(join(repository, "keep.txt"), "keep work\n");
+	writeFileSync(join(repository, "drop.txt"), "drop work\n");
+	writeFileSync(join(repository, "untracked-stash.txt"), "untracked\n");
+	await assert.rejects(
+		() => service.stash({ sessionId: "session-1", files: [] }),
+		(error) => error?.code === "branchSwitcher/nothing-stashed",
+		"stash without checked files is rejected"
+	);
+	const stashed = await service.stash({
+		sessionId: "session-1",
+		files: ["keep.txt", "untracked-stash.txt"],
+		message: "wip keep set",
+		includeUntracked: true
+	});
+	assert.equal(stashed.stashed, true, "stash reported");
+	assert.match(stashed.ref, /^stash@\{\d+\}$/u, "stash reference reported");
+	const stashes = await service.stashList({ sessionId: "session-1" });
+	assert.equal(stashes.stashes.length >= 1, true, "stash list has entries");
+	const entry = stashes.stashes[0];
+	assert.equal(entry.message, "wip keep set", "stash message preserved");
+	assert.ok(entry.files.includes("keep.txt"), "stashed file listed in the entry");
+	assert.ok(entry.files.includes("untracked-stash.txt"), "untracked file stashed and listed");
+	const stillThere = await service.changes({ sessionId: "session-1" });
+	assert.ok(!stillThere.files.some((row) => row.path === "keep.txt"), "stashed file left the working tree");
+	const afterStash = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: repository }).toString().trim();
+	assert.equal(afterStash, "main", "stash keeps the current branch");
+	// the tree still has drop.txt, so the apply first asks for confirmation
+	const applyGuard = await service.stashApply({ sessionId: "session-1", ref: stashed.ref, pop: true });
+	assert.equal(applyGuard.requireConfirm, true, "applying onto a dirty tree asks first");
+	const applied = await service.stashApply({ sessionId: "session-1", ref: stashed.ref, pop: true, confirmed: true });
+	assert.equal(applied.applied, true, "stash apply reported");
+	assert.equal(applied.popped, true, "pop drops the entry");
+	const restored = await service.changes({ sessionId: "session-1" });
+	assert.ok(restored.files.some((row) => row.path === "keep.txt"), "applied file back in the working tree");
+	const afterPop = await service.stashList({ sessionId: "session-1" });
+	assert.ok(!afterPop.stashes.some((row) => row.ref === stashed.ref), "popped entry removed from the list");
+	// drop path: stash again, then drop the entry
+	const second = await service.stash({ sessionId: "session-1", files: ["drop.txt"], message: "wip drop set" });
+	const dropped = await service.stashDrop({ sessionId: "session-1", ref: second.ref });
+	assert.equal(dropped.dropped, true, "drop reported");
+	const afterDrop = await service.stashList({ sessionId: "session-1" });
+	assert.ok(!afterDrop.stashes.some((row) => row.ref === second.ref), "dropped entry gone from the list");
+	rmSync(join(repository, "keep.txt"), { force: true });
+	rmSync(join(repository, "drop.txt"), { force: true });
+	rmSync(join(repository, "untracked-stash.txt"), { force: true });
+
 	console.log("host smoke test: ok");
 } finally {
 	rmSync(repository, { recursive: true, force: true });

@@ -1,7 +1,7 @@
 /**
  * Host half of the Git branch switcher plugin.
  *
- * Exposes one Typert Remote service `branchSwitcher` with eight direct methods:
+ * Exposes one Typert Remote service `branchSwitcher` with twelve direct methods:
  * - `status`: resolve the session's effective working directory, detect the
  *   enclosing git repository, and collect the current branch, local branches,
  *   and remote-tracking branches.
@@ -19,6 +19,12 @@
  *   the user started on; conflicts leave the repository mid-merge with the
  *   conflicting files listed.
  * - `mergeAbort`: abort an in-progress merge and restore the pre-merge state.
+ * - `stashList`: list stash entries with the files each one touches.
+ * - `stash`: stash the checked subset of changes (or everything, including
+ *   untracked files) into a new stash entry with an optional message.
+ * - `stashApply`: apply one entry back (optionally popping it); a dirty tree
+ *   asks for confirmation first, conflicts are reported with their files.
+ * - `stashDrop`: drop one entry, or clear every entry at once.
  *
  * Git runs through the harness subprocess seam with collected stdio, so no
  * shell is involved and the child inherits no harness credential environment.
@@ -29,6 +35,7 @@ import { RemoteError, TypertRemoteService } from "@deepseek-ai/dsh-typert-protoc
 const REMOTE_METHOD_DESCRIPTOR = "@deepseek-ai/dsh-typert-protocol/remote-methods";
 const MAX_GIT_OUTPUT_BYTES = 1 << 20;
 const MAX_BRANCHES = 500;
+const MAX_STASHES = 50;
 const MAX_FETCH_OUTPUT = 400;
 const STATUS_CACHE_MS = 3000;
 const NOT_A_REPOSITORY = /not\s+a\s+git\s+repository/iu;
@@ -722,6 +729,168 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		if (result.exitCode !== 0) return [];
 		return result.stdout.split(/\r?\n/u).map((line) => line.trim()).filter((line) => line.length > 0);
 	}
+
+	/**
+	 * List stash entries, newest first, with the files each one touches.
+	 * @param request - Request object carrying the session identity.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns Stash rows with index, message, branch, and file paths.
+	 */
+	async stashList(request, signal) {
+		const toplevel = await this.requireToplevel(request.sessionId, signal);
+		const listing = await runGit(this.ctx, toplevel, [
+			"stash",
+			"list",
+			"--format=%gd%x09%gs%x09%gx",
+			"--date=iso"
+		], signal);
+		const rows = [];
+		for (const line of listing.stdout.split(/\r?\n/u)) {
+			if (line.trim().length === 0) continue;
+			const [ref, subject, stamp = ""] = line.split("\t");
+			if (ref.trim().length === 0) continue;
+			const files = await runGit(this.ctx, toplevel, ["stash", "show", "--name-only", "--include-untracked", ref.trim()], signal);
+			// %gs renders "On <branch>: <message>" (or the git default when the
+			// user gave no message); split off the branch from the raw message.
+			const onMatch = /^On\s+([^:]+):\s*(.*)$/u.exec(subject.trim());
+			const message = (onMatch !== null ? onMatch[2] : subject).trim();
+			const branch = onMatch !== null ? onMatch[1].trim() : undefined;
+			rows.push({
+				ref: ref.trim(),
+				message,
+				...(branch !== undefined && branch.length > 0 ? { branch } : {}),
+				files: files.exitCode === 0
+					? files.stdout.split(/\r?\n/u).map((name) => name.trim()).filter((name) => name.length > 0)
+					: [],
+				...(stamp.trim().length > 0 ? { date: stamp.trim() } : {})
+			});
+			if (rows.length >= MAX_STASHES) break;
+		}
+		return { repository: true, stashes: rows };
+	}
+
+	/**
+	 * Stash the checked subset of working-tree changes (or all of them) into a
+	 * new stash entry, optionally including untracked files.
+	 * @param request - Request object carrying the session identity, checked paths, an optional message, and the untracked flag.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns The created stash reference and how many paths were stashed.
+	 */
+	async stash(request, signal) {
+		const toplevel = await this.requireToplevel(request.sessionId, signal);
+		const wanted = Array.isArray(request.files) ? request.files.filter((path) => typeof path === "string" && path.length > 0) : [];
+		const includeUntracked = request.includeUntracked === true;
+		if (wanted.length === 0 && includeUntracked !== true) {
+			throw new RemoteError("branchSwitcher/nothing-stashed", "no changes are checked to stash", {});
+		}
+		let message = typeof request.message === "string" ? request.message.trim() : "";
+		if (message.length === 0) message = "WIP";
+		const head = await runGit(this.ctx, toplevel, ["rev-parse", "--abbrev-ref", "HEAD"], signal);
+		const branch = head.exitCode === 0 ? head.stdout.trim() : "";
+		let stashed = wanted.length;
+		if (wanted.length > 0) {
+			// Untracked paths carry no index entry, and `stash push` refuses
+			// literal pathspecs for them; a real `git add` brings them under
+			// git's view so the pathspec stash picks them up. This always runs
+			// for checked untracked files — the user explicitly picked them.
+			const statusOut = await runGit(this.ctx, toplevel, ["status", "--porcelain", "-z"], signal);
+			const untracked = new Set();
+			for (const entry of statusOut.stdout.split("\u0000")) {
+				if (entry.length < 3 || !entry.startsWith("??")) continue;
+				untracked.add(entry.slice(3));
+			}
+			const toAdd = wanted.filter((path) => untracked.has(path));
+			if (toAdd.length > 0) {
+				await runGit(this.ctx, toplevel, ["add", "--", ...toAdd.map((path) => `:(literal)${path}`)], signal);
+			}
+			const pathspecs = wanted.map((path) => `:(literal)${path}`);
+			const pushed = await runGit(this.ctx, toplevel, [
+				"stash",
+				"push",
+				...(includeUntracked ? ["--include-untracked"] : []),
+				"-m",
+				message,
+				"--",
+				...pathspecs
+			], signal);
+			if (pushed.exitCode !== 0) {
+				throw new RemoteError("branchSwitcher/stash-failed", gitMessage(pushed, "git stash failed"), {});
+			}
+			if (/(^|\n)No local changes to save/u.test(pushed.stdout)) {
+				throw new RemoteError("branchSwitcher/nothing-stashed", "the checked paths have no changes to stash", {});
+			}
+		} else {
+			const pushed = await runGit(this.ctx, toplevel, [
+				"stash",
+				"push",
+				"--include-untracked",
+				"-m",
+				message
+			], signal);
+			if (pushed.exitCode !== 0) {
+				throw new RemoteError("branchSwitcher/stash-failed", gitMessage(pushed, "git stash failed"), {});
+			}
+			const statusOut = await runGit(this.ctx, toplevel, ["status", "--porcelain"], signal);
+			stashed = statusOut.exitCode === 0 ? countLines("") : 0;
+		}
+		const top = await runGit(this.ctx, toplevel, ["stash", "list", "--format=%gd"], signal);
+		const ref = top.stdout.split(/\r?\n/u).map((line) => line.trim()).find((line) => line.length > 0) ?? "stash@{0}";
+		this.invalidateStatus(toplevel);
+		return {
+			stashed: true,
+			ref,
+			paths: stashed,
+			...(branch.length > 0 ? { branch } : {})
+		};
+	}
+
+	/**
+	 * Apply one stash entry back onto the working tree, optionally popping it
+	 * (apply + drop) and optionally restoring the untracked files it saved.
+	 * @param request - Request object carrying the session identity, the stash reference, and the pop/index flags.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns The applied reference, whether it was dropped, and the conflicted paths when the apply hit conflicts.
+	 */
+	async stashApply(request, signal) {
+		const toplevel = await this.requireToplevel(request.sessionId, signal);
+		const ref = typeof request.ref === "string" && /^stash@\{\d+\}$/u.test(request.ref) ? request.ref : "stash@{0}";
+		const pop = request.pop === true;
+		const dirty = await runGit(this.ctx, toplevel, ["status", "--porcelain"], signal);
+		if (dirty.exitCode === 0 && countLines(dirty.stdout) > 0 && request.confirmed !== true) {
+			return { requireConfirm: true, dirtyFiles: countLines(dirty.stdout) };
+		}
+		const args = pop ? ["stash", "pop"] : ["stash", "apply"];
+		const applied = await runGit(this.ctx, toplevel, [...args, ref], signal);
+		if (applied.exitCode !== 0) {
+			const conflicts = await this.conflictedFiles(toplevel, signal);
+			if (conflicts.length > 0) {
+				return { applied: true, ref, popped: pop, conflicted: true, files: conflicts };
+			}
+			throw new RemoteError("branchSwitcher/apply-failed", gitMessage(applied, "git stash apply failed"), {});
+		}
+		this.invalidateStatus(toplevel);
+		return { applied: true, ref, popped: pop };
+	}
+
+	/**
+	 * Drop one stash entry (or every entry with all: true).
+	 * @param request - Request object carrying the session identity, the stash reference, and the all flag.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns Whether the entry was dropped.
+	 */
+	async stashDrop(request, signal) {
+		const toplevel = await this.requireToplevel(request.sessionId, signal);
+		const args = request.all === true ? ["stash", "clear"] : ["stash", "drop"];
+		if (request.all !== true) {
+			const ref = typeof request.ref === "string" && /^stash@\{\d+\}$/u.test(request.ref) ? request.ref : "stash@{0}";
+			args.push(ref);
+		}
+		const dropped = await runGit(this.ctx, toplevel, args, signal);
+		if (dropped.exitCode !== 0) {
+			throw new RemoteError("branchSwitcher/drop-failed", gitMessage(dropped, "git stash drop failed"), {});
+		}
+		return { dropped: true, all: request.all === true };
+	}
 }
 
 markRemote(BranchSwitcherService.prototype, "status");
@@ -732,3 +901,7 @@ markRemote(BranchSwitcherService.prototype, "changes");
 markRemote(BranchSwitcherService.prototype, "push");
 markRemote(BranchSwitcherService.prototype, "merge");
 markRemote(BranchSwitcherService.prototype, "mergeAbort");
+markRemote(BranchSwitcherService.prototype, "stashList");
+markRemote(BranchSwitcherService.prototype, "stash");
+markRemote(BranchSwitcherService.prototype, "stashApply");
+markRemote(BranchSwitcherService.prototype, "stashDrop");

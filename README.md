@@ -22,6 +22,7 @@
 - **能建分支**：菜单底部「＋ 新建分支」，选好源分支（默认 `master`）点「创建并切换」，当前会话的工作目录**立刻**落到新分支。
 - **能推送**：「↑ 推送」列出全部未提交改动，**勾选任意一部分** → 填提交信息 → 提交并推送到远端分支（首推自动建上游）；工作区干净时一键推送已有提交。
 - **能合并**：「⇆ 合并」双下拉选来源/目标，目标自动推断为该分支的拉取来源；冲突时列出冲突文件并可一键放弃合并，合并后自动回到你原来的分支。
+- **能暂存**：「≡ 暂存」勾选任意一部分改动先搁置起来（切分支、拉代码前先收好现场）；「暂存列表」随时恢复某一条（可恢复后保留或恢复并删除），也能删除单条或清空全部。
 - **不猜你的意图**：工作区不干净、目标分支不存在时先弹确认；分支名做白名单校验，文件路径按字面量传给 git，不给注入留口子。
 - **会话级**：每个会话按各自的工作目录独立显示分支；非 git 目录自动隐藏。
 - **纯本地**：只在本地跑 git，除 `git fetch`/`git push` 外不碰网络，不上传任何数据。
@@ -38,7 +39,8 @@
 | 新建分支并切换 | 选源分支（默认 `master` → `main` → 当前分支，也可选远端跟踪分支），`git switch -c` 后会话立即切过去；拉取来源记入本地配置供合并推断 |
 | 勾选提交并推送 | 「↑ 推送」：改动列表勾选子集 → 提交 → 推送；无上游时自动 `-u origin HEAD`；干净工作区一键推送已有提交；远端拒绝时不 force push |
 | 分支合并 | 「⇆ 合并」：来源/目标双下拉，目标默认推断拉取来源（记录源 → 上游 → merge-base → master/main）；冲突列文件 + 放弃出口；成功后回到原分支 |
-| 安全确认 | 脏工作区切换/新建/合并前确认；分支名白名单校验；pathspec 按字面量防路径注入 |
+| 改动暂存与恢复 | 「≡ 暂存」：勾选子集（可含未跟踪文件）存成一条带描述的 stash；「暂存列表」：逐条查看文件清单，恢复（保留条目）或恢复并删除；工作区不干净时恢复前确认；可删单条或清空 |
+| 安全确认 | 脏工作区切换/新建/合并/恢复暂存前确认；分支名白名单校验；pathspec 按字面量防路径注入 |
 
 ## 安装 / Install
 
@@ -103,7 +105,7 @@ dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher
 ## 工作原理 / How it works
 
 - Host 半包（`index.js`）：`TypertRemoteService` 子类 `branchSwitcher`，八个 direct 方法：
-  - `status`：解析会话工作目录 → `rev-parse --show-toplevel`，然后并行跑 `rev-parse --abbrev-ref HEAD`、一条合并 `refs/heads`+`refs/remotes` 的 `for-each-ref`、`status --porcelain`（冷启动共 3 次 git spawn）；结果按仓库根做 3 秒 TTL 缓存，切换对话瞬间回显，任何写操作（checkout/fetch/create/push/merge/mergeAbort）都会失效缓存。
+  - `status`：解析会话工作目录 → `rev-parse --show-toplevel`，然后并行跑 `rev-parse --abbrev-ref HEAD`、一条合并 `refs/heads`+`refs/remotes` 的 `for-each-ref`、`status --porcelain`（冷启动共 3 次 git spawn）；结果按仓库根做 3 秒 TTL 缓存，切换对话瞬间回显，任何写操作（checkout/fetch/create/push/merge/mergeAbort/stash/stashApply/stashDrop）都会失效缓存。
   - `checkout`：本地分支直接 `git switch`；只有远端跟踪分支时 `git switch --track <remote>/<branch>` 自动建本地跟踪分支；工作区不干净或目标不存在时先返回确认请求（每次都实时 `status --porcelain`，不读缓存）。
   - `fetch`：`git fetch --all --prune`，随后返回刷新后的仓库状态与截断后的 git 输出。
   - `create`：`git switch -c <新分支> <源分支>`，源分支可以是本地分支，也可以是远端跟踪分支（解析成具体的 ref）；重名或源分支不存在时分别报 `branchSwitcher/branch-exists`、`branchSwitcher/base-missing`；工作区不干净时先返回确认请求；建分支后把源分支写入 `branch.<名>.dsh-base` 本地配置（只落 `.git/config`，不随 push 上传）。
@@ -111,16 +113,20 @@ dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher
   - `push`：勾选文件用 `:(literal)` pathspec 逐个 `git add` → `commit -m` → 无上游时 `push -u origin HEAD` 否则 `git push`；无远端/无可提交内容/空提交信息分别报 `branchSwitcher/no-remote`、`branchSwitcher/nothing-staged`、`branchSwitcher/empty-message`；远端拒绝时报 `branchSwitcher/push-rejected`（不 force push）。
   - `merge`：记录原分支 → `switch 目标` → `merge 来源` → 成功 `switch` 回原分支并返回模式（fast-forward/true/up-to-date）；冲突时留在目标分支返回冲突文件清单；非冲突失败自动 `merge --abort` 并恢复原分支。
   - `mergeAbort`：检测到 `MERGE_HEAD` 才执行 `git merge --abort`；无合并中状态报 `branchSwitcher/not-merging`。
+  - `stash`：勾选子集 `git stash push -m <描述> [--include-untracked] -- :(literal)<路径>...`；勾选中的未跟踪文件先 `git add` 使 pathspec 生效；无改动可存时报 `branchSwitcher/nothing-stashed`。
+  - `stashList`：`git stash list` 解析为条目（引用/描述/所在分支/日期），逐条 `git stash show --name-only --include-untracked` 列出涉及文件，最多 50 条。
+  - `stashApply`：`git stash apply|pop <ref>`；工作区不干净时先返回确认请求；冲突时返回冲突文件清单并保持现场（可自行解决或 `checkout` 脱身）。
+  - `stashDrop`：`git stash drop <ref>` 删单条；`all: true` 时 `git stash clear` 清空。
   - 所有 git 调用经 `subprocess.spawn` 无 shell 执行，stdio 全程收集、1 MiB 上限。
-- Client 半包（`client.js`）：内联 `createTypertRemoteInfo` 声明全部八个 direct 方法，`ctx.remote.$mount` 挂载后取 `remote.branchSwitcher` 命名空间调用；UI 注册到 `conversation.input.left`，样式全部使用 `--dsw-alias-*` 主题变量，跟随浅色/深色主题。胶囊按会话记忆上次状态，切回对话零等待渲染；输入行宽度不足时通过容器查询自动收成纯图标（与原生权限胶囊同一机制）。
+- Client 半包（`client.js`）：内联 `createTypertRemoteInfo` 声明全部十二个 direct 方法，`ctx.remote.$mount` 挂载后取 `remote.branchSwitcher` 命名空间调用；UI 注册到 `conversation.input.left`，样式全部使用 `--dsw-alias-*` 主题变量，跟随浅色/深色主题。胶囊按会话记忆上次状态，切回对话零等待渲染；输入行宽度不足时通过容器查询自动收成纯图标（与原生权限胶囊同一机制）。
 - 分支名经白名单校验，拒绝以 `-` 开头、含空白/控制字符、`..`、`~ ^ :` 结尾等可注入参数或引用的名称；推送的文件路径按字面量 pathspec 传递。
 
 ## 开发 / Development
 
 ```bash
 pnpm install
-node tests/host-smoke.test.mjs     # Host 半包：真实 git 仓库 + 本地裸库远端，覆盖状态/切换/脏树确认/fetch/远端分支跟踪/新建分支/勾选提交推送/合并三态/冲突放弃/来源推断
-node tests/client-smoke.test.mjs   # Client 半包：模块装载、slot 注册、Remote 调用桥（含 create/changes/push/merge/mergeAbort）
+node tests/host-smoke.test.mjs     # Host 半包：真实 git 仓库 + 本地裸库远端，覆盖状态/切换/脏树确认/fetch/远端分支跟踪/新建分支/勾选提交推送/合并三态/冲突放弃/来源推断/暂存恢复删除
+node tests/client-smoke.test.mjs   # Client 半包：模块装载、slot 注册、Remote 调用桥（含 create/changes/push/merge/mergeAbort/stash 系列）
 ```
 
 ## 隐私 / Privacy
