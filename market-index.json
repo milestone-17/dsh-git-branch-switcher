@@ -26,8 +26,8 @@
         "zh": "Git 分支切换器"
       },
       "description": {
-        "en": "A composer chip that shows the current git branch of the session working directory and switches local or remote-tracking branches from a TRAE-style popup menu, with one-click git fetch, create-branch-and-switch, staged-subset commit & push, branch merge with conflict abort, partial stash & restore, and confirmation before touching a dirty tree.",
-        "zh": "在输入框工具行显示当前 git 分支的胶囊按钮，TRAE 风格菜单一键切换本地或远端跟踪分支，支持一键同步远端分支、新建分支并立即切换、勾选改动提交并推送、分支合并（自动推断拉取来源、冲突可放弃）和部分暂存与恢复；工作区不干净时先弹确认。"
+        "en": "A composer chip that shows the current git branch of the session working directory and switches local or remote-tracking branches from a TRAE-style popup menu, with one-click git fetch, create-branch-and-switch, staged-subset commit & push, branch merge with conflict abort, partial stash & restore, and confirmation before touching a dirty tree. Every popover docks above the composer so it never covers the draft, spells out the source → target flow, and opens its change list instantly.",
+        "zh": "在输入框工具行显示当前 git 分支的胶囊按钮，TRAE 风格菜单一键切换本地或远端跟踪分支，支持一键同步远端分支、新建分支并立即切换、勾选改动提交并推送、分支合并（自动推断拉取来源、冲突可放弃）和部分暂存与恢复；工作区不干净时先弹确认。所有弹层都停靠在输入框上方，不再遮挡草稿；推送和合并会标出来源 → 目标流向；改动列表进入即出。"
       },
       "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJub25lIj4KICA8cGF0aCBkPSJNNC41IDJhMiAyIDAgMSAwIC45IDMuNzlBMiAyIDAgMCAwIDQuNSAyWm0wIDQuNnYyLjhhMy42IDMuNiAwIDAgMCAzLjYgMy42aC40YTIgMiAwIDEgMCAwLTEuMmgtLjRhMi40IDIuNCAwIDAgMS0yLjQtMi40VjYuNmEyIDIgMCAxIDAtMS4yIDBaTTExLjUgOS40YTIgMiAwIDEgMCAuOS4yMUEyIDIgMCAwIDAgMTEuNSA5LjRaIiBmaWxsPSJjdXJyZW50Q29sb3IiLz4KPC9zdmc+Cg==",
       "author": "LuoBiao (milestone-17)",
@@ -46,6 +46,18 @@
         ]
       },
       "versions": [
+        {
+          "version": "0.6.0",
+          "publishTimestamp": 1794224502,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
+            "commit": "10daabfe4fd38ee189b50c80c1f4c671fef42d62"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.2 <0.3.0 || >=0.3.0-rc.1 <0.4.0-0"
+          }
+        },
         {
           "version": "0.5.2",
           "publishTimestamp": 1793952719,
