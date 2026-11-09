@@ -11,12 +11,18 @@ import { join } from "node:path";
 import { strict as assert } from "node:assert";
 import BranchSwitcherService from "../index.js";
 
+/** Records how many git processes overlap, so a call's spawn rounds are observable. */
+const spawns = { inFlight: 0, maxInFlight: 0, argv: [] };
+
 /** Minimal harness subprocess seam: no shell, collected stdio, bounded output. */
 const subprocess = {
 	async resolveExecutable(command) {
 		return command;
 	},
 	spawn(spec) {
+		spawns.inFlight += 1;
+		spawns.maxInFlight = Math.max(spawns.maxInFlight, spawns.inFlight);
+		spawns.argv.push(spec.argv.slice(1));
 		const child = spawn(spec.argv[0], spec.argv.slice(1), { cwd: spec.cwd, shell: false });
 		let stdout = "";
 		let stderr = "";
@@ -27,7 +33,10 @@ const subprocess = {
 			stderr += chunk;
 		});
 		const done = new Promise((resolve) => {
-			child.on("close", (code) => resolve({ exitCode: code ?? 0 }));
+			child.on("close", (code) => {
+				spawns.inFlight -= 1;
+				resolve({ exitCode: code ?? 0 });
+			});
 		});
 		return {
 			done,
@@ -196,9 +205,67 @@ try {
 	rmSync(join(repository, "中文路径.md"), { force: true });
 	service.invalidateStatus(repository);
 
+	// --- changes: the branch header carries branch, upstream, and ahead count ---
+	// main tracks origin/main here, so the header names both.
+	const trackedChanges = await service.changes({ sessionId: "session-1" });
+	assert.equal(trackedChanges.upstream, "origin/main", "upstream reported from the branch header");
+	assert.equal(trackedChanges.unpushedCount, 0, "a pushed branch has nothing unpushed");
+	assert.equal(trackedChanges.current, "main", "current branch still reported");
+
+	// A commit that is not on the upstream must show up as an unpushed count.
+	writeFileSync(join(repository, "ahead.txt"), "ahead\n");
+	execFileSync("git", ["add", "-A"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["commit", "-m", "local only"], { cwd: repository, stdio: "ignore" });
+	const aheadChanges = await service.changes({ sessionId: "session-1" });
+	assert.equal(aheadChanges.unpushedCount, 1, "a local-only commit counts as unpushed");
+	assert.equal(aheadChanges.upstream, "origin/main", "upstream still reported while ahead");
+	execFileSync("git", ["reset", "--hard", "HEAD~1"], { cwd: repository, stdio: "ignore" });
+	rmSync(join(repository, "ahead.txt"), { force: true });
+
+	// A branch without an upstream reports no upstream and no unpushed commits.
+	execFileSync("git", ["checkout", "-b", "feature/no-upstream"], { cwd: repository, stdio: "ignore" });
+	const orphanChanges = await service.changes({ sessionId: "session-1" });
+	assert.equal(orphanChanges.upstream, undefined, "a branch without an upstream reports none");
+	assert.equal(orphanChanges.unpushedCount, 0, "a branch without an upstream has nothing unpushed");
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+
+	// --- changes: one spawn round for status, remote list, and merge probe ---
+	spawns.inFlight = 0;
+	spawns.maxInFlight = 0;
+	spawns.argv = [];
+	const roundTrip = await service.changes({ sessionId: "session-1" });
+	assert.equal(spawns.maxInFlight, 3, "status, remote list, and merge probe run in one round");
+	assert.ok(
+		spawns.argv.some((argv) => argv[0] === "status" && argv.includes("--branch")),
+		"the status read asks for the branch header"
+	);
+	assert.ok(
+		!spawns.argv.some((argv) => argv[0] === "rev-list" || (argv[0] === "rev-parse" && argv[1] === "--abbrev-ref")),
+		"the separate rev-parse and rev-list reads are gone"
+	);
+	assert.ok(Array.isArray(roundTrip.remotes) && roundTrip.remotes.includes("origin"), "remotes still reported");
+	assert.equal(roundTrip.merging, false, "merge state still reported");
+	assert.ok(Array.isArray(roundTrip.files), "change rows still reported");
+
+	// --- changes: the branch header never leaks into the change rows ---
+	assert.ok(
+		!roundTrip.files.some((row) => row.path.startsWith("main...")),
+		"the branch header is not reported as a change row"
+	);
+
 	// --- changes: inferred merge target via dsh-base fallbacks ---
 	const inferred = await service.changes({ sessionId: "session-1", inferTargetFor: "feature/second" });
 	assert.equal(inferred.inferredTarget, "main", "merge target inferred from the recorded pull source");
+
+	// --- changes: the merge-base fallback still picks the closest branch ---
+	execFileSync("git", ["checkout", "-b", "feature/infer-probe"], { cwd: repository, stdio: "ignore" });
+	spawns.inFlight = 0;
+	spawns.maxInFlight = 0;
+	const probed = await service.changes({ sessionId: "session-1", inferTargetFor: "feature/infer-probe" });
+	assert.equal(probed.inferredTarget, "main", "the merge-base fallback picks the closest branch");
+	assert.ok(spawns.maxInFlight >= 4, "the candidate branch probes run concurrently");
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	execFileSync("git", ["branch", "-D", "feature/infer-probe"], { cwd: repository, stdio: "ignore" });
 
 	// --- push: no remote repository errors first ---
 	const noRemoteRepo = createRepository();

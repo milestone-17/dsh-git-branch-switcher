@@ -7,6 +7,17 @@ window.__ModuleLoader__.load({
 		const zod = require("zod");
 		const React = require("react");
 		const h = React.createElement;
+		// The host seeds `react-dom` for plugin bundles so a popover can be
+		// portaled to the document root, the way the host's own composer menus
+		// do. Older hosts do not seed it, so the portal stays optional and the
+		// menu falls back to rendering in place.
+		const ReactDOM = (() => {
+			try {
+				return require("react-dom");
+			} catch {
+				return null;
+			}
+		})();
 
 		//#region createTypertRemoteInfo — mirrors @deepseek-ai/dsh-typert-protocol (MIT)
 		/**
@@ -914,6 +925,7 @@ window.__ModuleLoader__.load({
 			"push.pushCommits": "Push {count} commit(s)",
 			"push.done": "Pushed to {upstream}.",
 			"push.noRemote": "This repository has no remote. Add one before pushing.",
+			"push.noUpstream": "no upstream yet — the first push sets it",
 			"push.nothingStaged": "No changes are checked and no commits are waiting to push.",
 			"push.staleHost": "The running host is an older version without push support. Restart DeepSeek Harness to enable pushing.",
 			"merge.title": "Merge branches",
@@ -921,6 +933,7 @@ window.__ModuleLoader__.load({
 			"merge.source": "Source (merge from)",
 			"merge.target": "Target (merge into)",
 			"merge.targetDefault": "{branch} (inferred)",
+			"merge.targetPending": "pick a target",
 			"merge.same": "Source and target must differ.",
 			"merge.submit": "Merge",
 			"merge.done": "Merged {source} into {target} ({mode}).",
@@ -1007,6 +1020,7 @@ window.__ModuleLoader__.load({
 			"push.pushCommits": "推送 {count} 个提交",
 			"push.done": "已推送到 {upstream}。",
 			"push.noRemote": "这个仓库还没有配置远端，请先添加远端再推送。",
+			"push.noUpstream": "尚无上游，首次推送会自动建立",
 			"push.nothingStaged": "没有勾选任何改动，也没有待推送的提交。",
 			"push.staleHost": "当前运行的宿主版本较旧，还没有推送能力。请完全退出并重启 DeepSeek Harness 应用后再试。",
 			"merge.title": "合并分支",
@@ -1014,6 +1028,7 @@ window.__ModuleLoader__.load({
 			"merge.source": "来源（从这里合并）",
 			"merge.target": "目标（合并到这里）",
 			"merge.targetDefault": "{branch}（推断）",
+			"merge.targetPending": "请选择目标分支",
 			"merge.same": "来源和目标不能是同一个分支。",
 			"merge.submit": "合并",
 			"merge.done": "已把 {source} 合并进 {target}（{mode}）。",
@@ -1129,6 +1144,12 @@ window.__ModuleLoader__.load({
 @keyframes ${BASE}-panel-in{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
 .${BASE}-panel-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-panel-hint{margin-top:-6px;color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
+.${BASE}-flow{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-secondary,#888);font-size:11.5px;line-height:1.4;overflow:hidden}
+.${BASE}-flow-end{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
+.${BASE}-flow-arrow-icon,.${BASE}-arrow{flex:0 0 auto;color:var(--dsw-alias-brand-primary,#2f6feb)}
+.${BASE}-flow-note{margin-left:auto;flex:0 0 auto;color:var(--dsw-alias-label-tertiary,#999)}
+.${BASE}-flow-pending .${BASE}-flow-end{color:var(--dsw-alias-label-tertiary,#999)}
+.${BASE}-flow-arrow{display:flex;justify-content:center;margin:-4px 0;color:var(--dsw-alias-brand-primary,#2f6feb)}
 .${BASE}-field{display:flex;flex-direction:column;gap:5px}
 .${BASE}-field-label{color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
 .${BASE}-input,.${BASE}-select{box-sizing:border-box;width:100%;padding:7px 10px;border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));border-radius:var(--${BASE}-r-item);outline:none;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:inherit;font-size:13px;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);transition:border-color .12s var(--${BASE}-ease),background .12s var(--${BASE}-ease),box-shadow .12s var(--${BASE}-ease)}
@@ -1308,6 +1329,31 @@ window.__ModuleLoader__.load({
 			"stroke-linecap": "round",
 			"stroke-linejoin": "round"
 		}));
+		/** Direction arrow: rightwards for a source → target flow, downwards inside a stacked form. */
+		const ArrowIcon = ({ down = false }) => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true",
+			className: `${BASE}-arrow ${BASE}-arrow-icon`
+		}, h("path", {
+			d: down === true ? "M8 3v10M4 9l4 4 4-4" : "M3 8h10M9 4l4 4-4 4",
+			stroke: "currentColor",
+			"stroke-width": "1.5",
+			"stroke-linecap": "round",
+			"stroke-linejoin": "round"
+		}));
+		/**
+		 * A "source → target" strip naming the direction of the operation.
+		 * @param props - The `from` and `to` branch names plus an optional trailing note.
+		 * @returns The flow strip element.
+		 */
+		const FlowRow = ({ from, to, note }) => h("div", { className: `${BASE}-flow` },
+			h("span", { className: `${BASE}-flow-end`, title: from }, from),
+			h(ArrowIcon, { down: false }),
+			h("span", { className: `${BASE}-flow-end`, title: to }, to),
+			note !== void 0 ? h("span", { className: `${BASE}-flow-note` }, note) : null);
 		//#endregion
 
 		//#region chip
@@ -1315,6 +1361,28 @@ window.__ModuleLoader__.load({
 		const SLOT_ID = "git-branch-switcher";
 		/** Last known status per session, kept across slot remounts so switching conversations renders instantly. */
 		const statusMemory = new Map();
+		/**
+		 * Last known working-tree snapshot per session. The push, stash, and
+		 * merge panels read the same snapshot, so switching between them never
+		 * fetches the change list twice.
+		 */
+		const changesCache = new Map();
+		/** How long a snapshot stays usable before it is fetched again. */
+		const CHANGES_CACHE_MS = 30000;
+
+		/**
+		 * Space the host reserves above the conversation: the frame's top
+		 * clearance plus a little air. The host publishes the clearance as a CSS
+		 * variable and reads it the same way for its own composer menus, so the
+		 * panel stops below the conversation header instead of sliding under it.
+		 * @returns The reserved height in pixels.
+		 */
+		const frameTopReserve = () => {
+			if (typeof document === "undefined" || typeof getComputedStyle !== "function") return 84;
+			const raw = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dsh-frame-top-clearance"));
+			const clearance = Number.isNaN(raw) ? 84 : raw;
+			return Math.max(84, clearance + 20);
+		};
 
 		/** Composer chip: shows the current branch, opens the switcher menu, and mirrors model-selection's popover behavior. */
 		function Chip(props) {
@@ -1365,30 +1433,90 @@ window.__ModuleLoader__.load({
 			React.useEffect(() => {
 				refresh();
 			}, [refresh]);
+			/**
+			 * Read the working-tree snapshot, reusing the cached one so the
+			 * push, stash, and merge panels never fetch the same list twice.
+			 * @param options - Optional `inferTargetFor` branch whose merge target should be inferred.
+			 * @returns The change snapshot.
+			 */
+			const readChanges = React.useCallback(async (options = {}) => {
+				const inferTargetFor = typeof options.inferTargetFor === "string" && options.inferTargetFor.length > 0
+					? options.inferTargetFor
+					: void 0;
+				const cached = changesCache.get(sessionId);
+				const fresh = cached !== void 0 && Date.now() - cached.at < CHANGES_CACHE_MS;
+				if (fresh && (inferTargetFor === void 0 || cached.inferredFor === inferTargetFor)) {
+					return cached.value;
+				}
+				const result = await call("changes", inferTargetFor === void 0 ? { sessionId } : { sessionId, inferTargetFor });
+				changesCache.set(sessionId, { at: Date.now(), value: result, inferredFor: inferTargetFor });
+				return result;
+			}, [call, sessionId]);
+			/**
+			 * Fetch the change snapshot in the background while the menu is
+			 * open, so the push and stash panels show their list right away.
+			 */
+			const prefetchChanges = React.useCallback(() => {
+				readChanges().catch((cause) => {
+					// The panel that needs the data reports the failure itself.
+					console.warn("[git-branch-switcher] changes prefetch failed", cause);
+				});
+			}, [readChanges]);
 			const place = React.useCallback(() => {
 				const trigger = triggerRef.current;
 				const menu = menuRef.current;
 				if (trigger === void 0 || menu === void 0) return;
 				const rect = trigger.getBoundingClientRect();
 				const MARGIN = 12;
-				const available = Math.max(160, window.innerHeight - MARGIN * 2);
+				const GAP = 8;
+				// Anchor on the composer card: the host's own composer menus use
+				// the same attribute, so the panel clears the input area instead
+				// of covering the draft and the send button.
+				const card = typeof trigger.closest === "function" ? trigger.closest("[data-composer-card]") : null;
+				const anchorTop = card !== null ? card.getBoundingClientRect().top : rect.top;
 				const width = menu.offsetWidth;
-				const height = Math.min(menu.offsetHeight, available);
+				// The panel docks above the composer, so the room it may use is
+				// the space between the conversation header and the composer.
+				const reserve = frameTopReserve();
+				const ceiling = anchorTop - GAP;
+				const maxHeight = Math.min(Math.max(ceiling - reserve, 160), window.innerHeight - MARGIN * 2);
+				const height = Math.min(menu.offsetHeight, maxHeight);
 				let left = Math.min(rect.left, window.innerWidth - width - MARGIN);
 				left = Math.max(left, MARGIN);
-				let top = rect.bottom + 6;
-				if (top + height > window.innerHeight - MARGIN) top = rect.top - height - 6;
-				top = Math.max(MARGIN, Math.min(top, window.innerHeight - height - MARGIN));
-				setPosition({ left, top });
+				let top = ceiling - height;
+				top = Math.max(reserve, Math.min(top, window.innerHeight - height - MARGIN));
+				setPosition((current) => {
+					if (current !== void 0 && current.left === left && current.top === top && current.maxHeight === maxHeight) return current;
+					return { left, top, maxHeight };
+				});
 			}, []);
 			React.useLayoutEffect(() => {
-				if (open) place();
-				else setPosition(void 0);
+				if (!open) {
+					setPosition(void 0);
+					return;
+				}
+				place();
+				// The panel grows when its data arrives, so it re-places on its own
+				// size change and whenever the page or the window moves.
+				const onViewportChange = () => place();
+				window.addEventListener("scroll", onViewportChange, true);
+				window.addEventListener("resize", onViewportChange);
+				const menu = menuRef.current;
+				const observer = typeof ResizeObserver !== "undefined" && menu !== null ? new ResizeObserver(() => place()) : null;
+				if (menu !== null) observer?.observe(menu);
+				return () => {
+					observer?.disconnect();
+					window.removeEventListener("scroll", onViewportChange, true);
+					window.removeEventListener("resize", onViewportChange);
+				};
 			}, [open, mode, place]);
 			React.useEffect(() => {
 				if (!open) return;
 				const onDown = (event) => {
 					if (rootRef.current?.contains(event.target) === true) return;
+					// The panel may be portaled to the document root, so it is
+					// not a descendant of the chip anymore.
+					if (menuRef.current?.contains(event.target) === true) return;
 					setOpen(false);
 				};
 				const onKey = (event) => {
@@ -1445,6 +1573,9 @@ window.__ModuleLoader__.load({
 				setMergeState(void 0);
 				setOpen(true);
 				refresh();
+				// Warm the change snapshot so the push and stash panels open on
+				// their list instead of a loading state.
+				prefetchChanges();
 			};
 			const openCreate = () => {
 				setConfirming(void 0);
@@ -1454,16 +1585,23 @@ window.__ModuleLoader__.load({
 				setNewName("");
 				setBaseBranch((current) => current === "" ? preferredBase() : current);
 			};
+			/**
+			 * Adopt a change snapshot: the shared state plus a fully checked
+			 * selection for the push panel.
+			 * @param result - The snapshot returned by the host.
+			 */
+			const applySnapshot = (result) => {
+				setChanges(result);
+				const nextChecked = {};
+				for (const row of result.files ?? []) nextChecked[row.path] = true;
+				setChecked(nextChecked);
+			};
 			const loadChanges = async () => {
 				setError(void 0);
 				setNotice(void 0);
 				setMode("push");
 				try {
-					const result = await call("changes", { sessionId });
-					setChanges(result);
-					const nextChecked = {};
-					for (const row of result.files ?? []) nextChecked[row.path] = true;
-					setChecked(nextChecked);
+					applySnapshot(await readChanges());
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
 					setChanges({ repository: true, files: [], unpushedCount: 0, remotes: [] });
@@ -1477,36 +1615,29 @@ window.__ModuleLoader__.load({
 				setNotice(void 0);
 				setMode("merge");
 				setMergeState(void 0);
-				let changesSnapshot = changes;
-				if (changesSnapshot === void 0) {
-					try {
-						changesSnapshot = await call("changes", { sessionId });
-						setChanges(changesSnapshot);
-						const nextChecked = {};
-						for (const row of changesSnapshot.files ?? []) nextChecked[row.path] = true;
-						setChecked(nextChecked);
-					} catch {
-						changesSnapshot = void 0;
-					}
-				}
 				const source = status.current ?? branches[0]?.name ?? "";
 				setMergeSource(source);
 				setMergeTarget("");
 				setMergeInferred(false);
-				if (changesSnapshot?.merging === true) {
-					setMergeState({ conflicted: true, files: changesSnapshot.conflictFiles ?? [], branch: status.current ?? "" });
-					return;
-				}
-				if (source !== "" && branches.length > 1) {
-					try {
-						const result = await call("changes", { sessionId, inferTargetFor: source });
-						const inferred = result.inferredTarget;
-						if (typeof inferred === "string" && inferred !== source) {
-							setMergeTarget(inferred);
-							setMergeInferred(true);
-						}
-					} catch {
+				try {
+					// One call covers both the change list and the inferred
+					// merge target, so the panel never waits for two round trips.
+					const result = await readChanges(source === "" ? {} : { inferTargetFor: source });
+					applySnapshot(result);
+					if (result.merging === true) {
+						setMergeState({ conflicted: true, files: result.conflictFiles ?? [], branch: status.current ?? "" });
+						return;
 					}
+					const inferred = result.inferredTarget;
+					if (typeof inferred === "string" && inferred !== source) {
+						setMergeTarget(inferred);
+						setMergeInferred(true);
+					}
+				} catch (cause) {
+					const message = String(cause?.message ?? cause);
+					setError(/\b404\b/u.test(message) || /not\s+found/iu.test(message)
+						? t("push.staleHost")
+						: t("error.failed", { message }));
 				}
 			};
 			const loadStashSave = async () => {
@@ -1517,7 +1648,8 @@ window.__ModuleLoader__.load({
 				setStashMessage("");
 				setStashRows(void 0);
 				try {
-					const result = await call("changes", { sessionId });
+					// The same snapshot the push panel uses: no second fetch.
+					const result = await readChanges();
 					setChanges(result);
 					const nextChecked = {};
 					for (const row of result.files ?? []) nextChecked[row.path] = true;
@@ -1570,6 +1702,7 @@ window.__ModuleLoader__.load({
 					setStashMessage("");
 					setStashChecked({});
 					setStashFiles([]);
+					changesCache.delete(sessionId);
 					await refresh();
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
@@ -1591,6 +1724,7 @@ window.__ModuleLoader__.load({
 						setError(t("merge.conflict", { count: (result.files ?? []).length }));
 					} else {
 						setNotice(pop === true ? t("stash.appliedPopped", { ref }) : t("stash.applied", { ref }));
+						changesCache.delete(sessionId);
 						await refresh();
 					}
 				} catch (cause) {
@@ -1628,11 +1762,9 @@ window.__ModuleLoader__.load({
 					});
 					setNotice(t("push.done", { upstream: result.upstream ?? result.branch }));
 					setPushMessage("");
-					const refreshed = await call("changes", { sessionId });
-					setChanges(refreshed);
-					const nextChecked = {};
-					for (const row of refreshed.files ?? []) nextChecked[row.path] = true;
-					setChecked(nextChecked);
+					// The tree changed, so the shared snapshot is stale.
+					changesCache.delete(sessionId);
+					applySnapshot(await readChanges());
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
 					if (cause?.code === "branchSwitcher/no-remote") setError(t("push.noRemote"));
@@ -1664,6 +1796,7 @@ window.__ModuleLoader__.load({
 						setConfirming({ action: "merge", source, target, dirtyFiles: result.dirtyFiles });
 					} else if (result?.conflicted === true) {
 						setMergeState({ conflicted: true, files: result.files ?? [], branch: result.branch ?? target });
+						changesCache.delete(sessionId);
 						await refresh();
 					} else if (result?.merged === true) {
 						if (result.mode === "up-to-date") {
@@ -1673,6 +1806,7 @@ window.__ModuleLoader__.load({
 						}
 						setMergeState(void 0);
 						setMode("list");
+						changesCache.delete(sessionId);
 						await refresh();
 					}
 				} catch (cause) {
@@ -1690,6 +1824,7 @@ window.__ModuleLoader__.load({
 					setNotice(t("merge.aborted"));
 					setMergeState(void 0);
 					setMode("list");
+					changesCache.delete(sessionId);
 					await refresh();
 				} catch (cause) {
 					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
@@ -1927,9 +2062,21 @@ window.__ModuleLoader__.load({
 				h("span", { className: `${BASE}-check-kind` }, t(`kind.${row.kind}`))));
 			const checkedCount = Object.values(checked).filter((value) => value === true).length;
 			const localOptions = branches.map((branch) => ({ value: branch.name, label: branch.name }));
+			const pushRemotes = changes?.remotes ?? [];
+			const pushUpstream = changes?.upstream;
+			// The push direction: the local branch and the remote branch it goes to.
+			const pushFlow = changes === void 0 || pushRemotes.length === 0
+				? null
+				: pushUpstream !== void 0 && pushUpstream !== ""
+					? h(FlowRow, { from: changes.current ?? "", to: pushUpstream })
+					: h("div", { className: `${BASE}-flow ${BASE}-flow-pending` },
+						h("span", { className: `${BASE}-flow-end` }, changes.current ?? ""),
+						h(ArrowIcon, { down: false }),
+						h("span", { className: `${BASE}-flow-note` }, t("push.noUpstream")));
 			const pushPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("push.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("push.hint")),
+				pushFlow,
 				changes === void 0
 					? h("div", { className: `${BASE}-empty` }, t("push.loading"))
 					: (changes?.remotes ?? []).length === 0
@@ -1993,6 +2140,11 @@ window.__ModuleLoader__.load({
 				h("div", { className: `${BASE}-panel-hint` }, t("merge.hint")),
 				mergeConflict,
 				mergeState?.conflicted === true ? null : h(React.Fragment, null,
+					mergeSource !== "" ? h(FlowRow, {
+						from: mergeSource,
+						to: mergeTarget === "" ? t("merge.targetPending") : mergeTarget,
+						note: mergeSource !== "" && mergeTarget !== "" && mergeSource === mergeTarget ? t("merge.same") : void 0
+					}) : null,
 					h("label", { className: `${BASE}-field` },
 						h("span", { className: `${BASE}-field-label` }, t("merge.source")),
 						h("select", {
@@ -2003,6 +2155,7 @@ window.__ModuleLoader__.load({
 								setMergeTarget((current) => current === event.target.value ? "" : current);
 							}
 						}, localOptions.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),
+					h("div", { className: `${BASE}-flow-arrow`, "aria-hidden": "true" }, h(ArrowIcon, { down: true })),
 					h("label", { className: `${BASE}-field` },
 						h("span", { className: `${BASE}-field-label` }, mergeTarget !== "" && mergeInferred
 							? t("merge.targetDefault", { branch: mergeTarget })
@@ -2147,11 +2300,13 @@ window.__ModuleLoader__.load({
 						onClick: () => doStashDrop("", true)
 					}, t("stash.dropAll")) : null));
 			const stashPanel = stashMode === "list" ? stashListPanel : stashSavePanel;
-			const menu = open ? h("div", {
+			const menuContent = open ? h("div", {
 				className: `${BASE}-menu ${BASE}-root`,
 				ref: menuRef,
 				role: "menu",
-				style: position === void 0 ? { visibility: "hidden" } : { left: `${position.left}px`, top: `${position.top}px` }
+				style: position === void 0
+					? { visibility: "hidden" }
+					: { left: `${position.left}px`, top: `${position.top}px`, maxHeight: `${position.maxHeight}px` }
 			},
 				mode === "create" ? createPanel
 					: mode === "push" ? pushPanel
@@ -2161,6 +2316,12 @@ window.__ModuleLoader__.load({
 				noticeLine,
 				confirmNotice,
 				errorNotice) : null;
+			// The panel is portaled to the document root so the composer's own
+			// stacking context and clipping cannot hide it; hosts without a
+			// portal render it in place instead.
+			const menu = ReactDOM === null || typeof document === "undefined"
+				? menuContent
+				: ReactDOM.createPortal(menuContent, document.body);
 			return h("div", { className: `${BASE}-root`, ref: rootRef, style: { display: "inline-flex" } },
 				h("button", {
 					type: "button",

@@ -61,6 +61,38 @@ function countLines(stdout) {
 	return stdout.split(/\r?\n/u).map((line) => line.trim()).filter((line) => line.length > 0).length;
 }
 
+/**
+ * Parse the `## <branch>...<upstream> [ahead N]` header of a porcelain
+ * `--branch` status into the current branch, its upstream, and the number of
+ * commits the upstream does not have.
+ *
+ * The header is the first Nul-delimited entry of the status output; a missing
+ * or malformed header yields no branch, no upstream, and a zero ahead count
+ * instead of throwing, so the change rows stay usable.
+ * @param stdout - Nul-delimited porcelain v1 output with the branch header.
+ * @returns The current branch, its upstream when the branch tracks one, and the ahead count.
+ */
+function parseBranchHeader(stdout) {
+	const first = stdout.split("\u0000")[0] ?? "";
+	if (!first.startsWith("## ")) return { current: "", upstream: undefined, ahead: 0 };
+	let rest = first.slice(3);
+	const unborn = rest.startsWith("No commits yet on ");
+	if (unborn) rest = rest.slice("No commits yet on ".length);
+	const bracket = rest.indexOf("[");
+	const aheadMatch = /\[\s*ahead (\d+)/u.exec(bracket >= 0 ? rest.slice(bracket) : "");
+	const ahead = aheadMatch === null ? 0 : Number.parseInt(aheadMatch[1], 10);
+	let head = (bracket >= 0 ? rest.slice(0, bracket) : rest).trim();
+	let upstream;
+	const dots = head.indexOf("...");
+	if (dots >= 0) {
+		const candidate = head.slice(dots + 3).trim();
+		upstream = candidate.length > 0 ? candidate : undefined;
+		head = head.slice(0, dots).trim();
+	}
+	if (head === "HEAD" || head === "HEAD (no branch)") return { current: "", upstream, ahead };
+	return { current: head, upstream, ahead };
+}
+
 /** Trim one git error surface into a wire-safe message. */
 function gitMessage(result, fallback) {
 	return (result.stderr || result.stdout || fallback).trim().slice(0, 400);
@@ -306,31 +338,33 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	 * preselect it.
 	 * @param request - Request object carrying the session identity and an optional branch to infer a merge target for.
 	 * @param signal - Cancellation signal of the Remote call.
-	 * @returns Typed change rows, the unpushed count, and optionally the inferred merge target.
+	 * @returns Typed change rows, the unpushed count, the upstream branch, and optionally the inferred merge target.
 	 */
 	async changes(request, signal) {
 		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
-		const statusOut = await runGit(this.ctx, toplevel, ["status", "--porcelain", "-z"], signal);
-		if (statusOut.exitCode !== 0) {
-			throw new RemoteError("branchSwitcher/status-failed", gitMessage(statusOut, "git status failed"), {});
-		}
-		const files = this.parseChanges(statusOut.stdout);
-		// All independent reads go out in one round; a cold changes call costs
-		// two git spawn rounds total (this status plus the parallel block).
-		const [head, unpushed, remotes, merging] = await Promise.all([
-			runGit(this.ctx, toplevel, ["rev-parse", "--abbrev-ref", "HEAD"], signal),
-			this.unpushedCount(toplevel, signal),
+		// One round of git: the branch header of `status --branch` carries the
+		// current branch, the upstream, and the ahead count, so the separate
+		// rev-parse and rev-list reads are gone. The remote list and the
+		// merge-in-progress probe do not depend on it and run in the same round.
+		const [statusOut, remotes, merging] = await Promise.all([
+			runGit(this.ctx, toplevel, ["status", "--porcelain", "-z", "--branch"], signal),
 			runGit(this.ctx, toplevel, ["remote"], signal),
 			this.mergingInProgress(toplevel, signal)
 		]);
-		const current = head.exitCode === 0 ? head.stdout.trim() : "";
+		if (statusOut.exitCode !== 0) {
+			throw new RemoteError("branchSwitcher/status-failed", gitMessage(statusOut, "git status failed"), {});
+		}
+		const header = parseBranchHeader(statusOut.stdout);
+		const files = this.parseChanges(statusOut.stdout);
+		const current = header.current;
 		const detached = current === "" || current === "HEAD";
 		const result = {
 			repository: true,
 			toplevel,
 			current: detached ? undefined : current,
+			upstream: header.upstream,
 			files,
-			unpushedCount: unpushed,
+			unpushedCount: header.ahead,
 			remotes: remotes.stdout.split(/\r?\n/u).map((line) => line.trim()).filter((line) => line.length > 0),
 			merging,
 			...(merging ? { conflictFiles: await this.conflictedFiles(toplevel, signal) } : {})
@@ -632,6 +666,9 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		const rows = [];
 		for (const entry of entries) {
 			const code = entry.slice(0, 2);
+			// `## <branch>...<upstream> [ahead N]` is the branch header of
+			// `status --branch`, not a change row.
+			if (code === "##") continue;
 			let path = entry.slice(3);
 			let previousPath;
 			let kind;
@@ -704,22 +741,28 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		}
 		const head = await runGit(this.ctx, toplevel, ["rev-parse", "--verify", `${source}`], signal);
 		if (head.exitCode === 0) {
-			const baseCommit = head.stdout.trim();
 			const isTrunk = (name) => name === "master" || name === "main";
+			// Probe every candidate concurrently: the probes are independent
+			// reads, so a repository with many branches costs one round instead
+			// of two spawns per candidate.
+			const probes = await Promise.all(others.map(async (candidate) => {
+				const mergeBase = await runGit(this.ctx, toplevel, ["merge-base", candidate, source], signal);
+				if (mergeBase.exitCode !== 0) return undefined;
+				const distance = await runGit(this.ctx, toplevel, ["rev-list", "--count", `${mergeBase.stdout.trim()}..${candidate}`], signal);
+				if (distance.exitCode !== 0) return undefined;
+				const value = Number.parseInt(distance.stdout.trim(), 10);
+				if (!Number.isFinite(value)) return undefined;
+				return { candidate, distance: value };
+			}));
 			let best;
 			let bestDistance = Number.POSITIVE_INFINITY;
-			for (const candidate of others) {
-				const mergeBase = await runGit(this.ctx, toplevel, ["merge-base", candidate, source], signal);
-				if (mergeBase.exitCode !== 0) continue;
-				const distance = await runGit(this.ctx, toplevel, ["rev-list", "--count", `${mergeBase.stdout.trim()}..${candidate}`], signal);
-				if (distance.exitCode !== 0) continue;
-				const value = Number.parseInt(distance.stdout.trim(), 10);
-				if (!Number.isFinite(value)) continue;
-				const wins = value < bestDistance
-					|| (value === bestDistance && best !== undefined && isTrunk(candidate) && !isTrunk(best));
+			for (const probe of probes) {
+				if (probe === undefined) continue;
+				const wins = probe.distance < bestDistance
+					|| (probe.distance === bestDistance && best !== undefined && isTrunk(probe.candidate) && !isTrunk(best));
 				if (wins) {
-					best = candidate;
-					bestDistance = value;
+					best = probe.candidate;
+					bestDistance = probe.distance;
 				}
 			}
 			if (best !== undefined) return best;
