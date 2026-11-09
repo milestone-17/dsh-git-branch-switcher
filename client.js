@@ -928,6 +928,10 @@ window.__ModuleLoader__.load({
 			"push.noUpstream": "no upstream yet — the first push sets it",
 			"push.nothingStaged": "No changes are checked and no commits are waiting to push.",
 			"push.staleHost": "The running host is an older version without push support. Restart DeepSeek Harness to enable pushing.",
+			"push.summaryChecked": "Commit {count} file(s) to {branch} and push to {upstream}",
+			"push.summaryCheckedNewUpstream": "Commit {count} file(s) to {branch}; first push will set upstream {upstream}",
+			"push.summaryCommits": "Push {count} commit(s) to {upstream}",
+			"push.summaryNoUpstream": "Commit {count} file(s) to local branch {branch} (no upstream yet)",
 			"merge.title": "Merge branches",
 			"merge.hint": "Merge a source branch into a target branch. You will stay on your current branch afterwards.",
 			"merge.source": "Source (merge from)",
@@ -943,6 +947,7 @@ window.__ModuleLoader__.load({
 			"merge.aborted": "Merge aborted; the branch is back to its pre-merge state.",
 			"merge.restored": "Back on {branch}.",
 			"merge.confirmDirty": "The working tree has {count} uncommitted change(s). Merging may mix them into the target branch.",
+			"merge.confirmSummary": "Merge {source} into {target}, then return to {branch}",
 			"menu.stash": "Stash",
 			"stash.title": "Stash changes",
 			"stash.hint": "Pick the changes to set aside, then restore them later from the stash list.",
@@ -978,6 +983,8 @@ window.__ModuleLoader__.load({
 			"confirm.missing": "Branch \"{branch}\" does not exist locally. Git will create it from the current commit.",
 			"confirm.ok": "Switch anyway",
 			"confirm.cancel": "Cancel",
+			"hint.notGitRepo": "Git Branch Switcher is active. Open a git repository to see your current branch here.",
+			"hint.dismiss": "Got it",
 			"error.failed": "Branch operation failed: {message}",
 			"error.fetch": "Fetch failed: {message}",
 			"error.fetchStaleHost": "The running host is an older version without the fetch method. Restart DeepSeek Harness to enable remote syncing."
@@ -1023,6 +1030,10 @@ window.__ModuleLoader__.load({
 			"push.noUpstream": "尚无上游，首次推送会自动建立",
 			"push.nothingStaged": "没有勾选任何改动，也没有待推送的提交。",
 			"push.staleHost": "当前运行的宿主版本较旧，还没有推送能力。请完全退出并重启 DeepSeek Harness 应用后再试。",
+			"push.summaryChecked": "将提交 {count} 个文件到 {branch}，并推送到 {upstream}",
+			"push.summaryCheckedNewUpstream": "将提交 {count} 个文件到 {branch}，首次推送会自动建立上游 {upstream}",
+			"push.summaryCommits": "将推送 {count} 个提交到 {upstream}",
+			"push.summaryNoUpstream": "将提交 {count} 个文件到本地分支 {branch}（尚无上游）",
 			"merge.title": "合并分支",
 			"merge.hint": "把来源分支合并进目标分支，合并后你会回到原来的分支。",
 			"merge.source": "来源（从这里合并）",
@@ -1038,6 +1049,7 @@ window.__ModuleLoader__.load({
 			"merge.aborted": "已放弃合并，分支恢复到合并前的状态。",
 			"merge.restored": "已回到 {branch}。",
 			"merge.confirmDirty": "工作区有 {count} 处未提交改动，合并可能会把它们混进目标分支。",
+			"merge.confirmSummary": "将把 {source} 合并进 {target}，合并后回到 {branch}",
 			"menu.stash": "暂存",
 			"stash.title": "暂存改动",
 			"stash.hint": "勾选要搁置的改动，之后随时可以从暂存列表恢复。",
@@ -1073,6 +1085,8 @@ window.__ModuleLoader__.load({
 			"confirm.missing": "本地不存在分支“{branch}”，git 将基于当前提交创建它。",
 			"confirm.ok": "仍然切换",
 			"confirm.cancel": "取消",
+			"hint.notGitRepo": "Git 分支切换器已启用。打开一个 git 仓库后，这里会显示当前分支。",
+			"hint.dismiss": "知道了",
 			"error.failed": "分支操作失败：{message}",
 			"error.fetch": "同步远端分支失败：{message}",
 			"error.fetchStaleHost": "当前运行的宿主版本较旧，还没有同步能力。请完全退出并重启 DeepSeek Harness 应用后再试。"
@@ -1095,6 +1109,8 @@ window.__ModuleLoader__.load({
 .${BASE}-chip:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-chip:active{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.16))}
 .${BASE}-chip:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
+.${BASE}-chip-hint{opacity:.75;cursor:help}
+.${BASE}-chip-hint:hover{opacity:1}
 .${BASE}-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px}
 /* Mirror the native permission chip: the composer row is a size container, so
    hide the branch text (and the chevron gap) when the row runs out of width. */
@@ -1144,6 +1160,7 @@ window.__ModuleLoader__.load({
 @keyframes ${BASE}-panel-in{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
 .${BASE}-panel-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-panel-hint{margin-top:-6px;color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
+.${BASE}-panel-summary{margin-top:-2px;padding:5px 8px;border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-secondary,#888);font-size:11.5px;line-height:1.4}
 .${BASE}-flow{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-secondary,#888);font-size:11.5px;line-height:1.4;overflow:hidden}
 .${BASE}-flow-end{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
 .${BASE}-flow-arrow-icon,.${BASE}-arrow{flex:0 0 auto;color:var(--dsw-alias-brand-primary,#2f6feb)}
@@ -1183,6 +1200,7 @@ window.__ModuleLoader__.load({
 .${BASE}-counter{color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px}
 .${BASE}-notice{margin-top:6px;padding:10px 11px;border-radius:var(--${BASE}-r-item);border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.22));background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.05));color:var(--dsw-alias-label-secondary,#888);font-size:12px;line-height:1.6;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 .${BASE}-notice-title{color:var(--dsw-alias-label-primary,#333);font-weight:600;font-size:12.5px}
+.${BASE}-notice-summary{margin-top:4px;color:var(--dsw-alias-label-secondary,#888);font-size:11.5px;line-height:1.5}
 .${BASE}-notice-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
 .${BASE}-stash-item{border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.2));border-radius:var(--${BASE}-r-item);padding:8px 9px;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.04));animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 .${BASE}-stash-top{display:flex;align-items:center;gap:6px;min-width:0}
@@ -1412,6 +1430,19 @@ window.__ModuleLoader__.load({
 			const [stashUntracked, setStashUntracked] = React.useState(false);
 			const [stashRows, setStashRows] = React.useState(void 0);
 			const [stashMode, setStashMode] = React.useState("save");
+			const [hintDismissed, setHintDismissed] = React.useState(() => {
+				try {
+					return localStorage.getItem("dsh-gbs-hint") === "1";
+				} catch {
+					return true;
+				}
+			});
+			const dismissHint = React.useCallback(() => {
+				setHintDismissed(true);
+				try {
+					localStorage.setItem("dsh-gbs-hint", "1");
+				} catch {}
+			}, []);
 			const rootRef = React.useRef(void 0);
 			const triggerRef = React.useRef(void 0);
 			const menuRef = React.useRef(void 0);
@@ -1537,7 +1568,18 @@ window.__ModuleLoader__.load({
 					document.removeEventListener("keydown", onKey);
 				};
 			}, [open, mode]);
-			if (status === void 0 || status === null || status.repository !== true) return null;
+			if (status === void 0 || status === null || status.repository !== true) {
+				if (status !== void 0 && status !== null && status.repository === false && !hintDismissed) {
+					return h("button", {
+						type: "button",
+						className: `${BASE}-chip ${BASE}-chip-hint`,
+						title: t("hint.notGitRepo"),
+						"aria-label": t("hint.notGitRepo"),
+						onClick: dismissHint
+					}, h(BranchIcon, null), h("span", { className: `${BASE}-label` }, "Git"));
+				}
+				return null;
+			}
 			const detached = status.detached === true || status.current === void 0;
 			const label = detached ? t("chip.detached") : status.current;
 			const branches = status.branches ?? [];
@@ -1554,8 +1596,8 @@ window.__ModuleLoader__.load({
 			];
 			const preferredBase = () => {
 				const names = new Set(branches.map((branch) => branch.name));
-				if (names.has("master")) return "master";
 				if (names.has("main")) return "main";
+				if (names.has("master")) return "master";
 				if (status.current !== void 0 && names.has(status.current)) return status.current;
 				return branches[0]?.name ?? "";
 			};
@@ -1918,6 +1960,9 @@ window.__ModuleLoader__.load({
 				}, h("span", { className: `${BASE}-row-mark` }, branch.current === true ? h(CheckMark, null) : null), h("span", { className: `${BASE}-row-name` }, branch.name)));
 			const confirmNotice = confirming === void 0 ? null : h("div", { className: `${BASE}-notice` },
 				h("div", { className: `${BASE}-notice-title` }, confirming.action === "merge" ? t("merge.title") : confirming.action === "stashApply" ? t("stash.listTitle") : t("confirm.title")),
+				confirming.action === "merge" && confirming.source !== "" && confirming.target !== ""
+					? h("div", { className: `${BASE}-notice-summary` }, t("merge.confirmSummary", { source: confirming.source, target: confirming.target, branch: status.current ?? "" }))
+					: null,
 				confirming.dirtyFiles > 0 ? h("div", { style: { marginTop: "4px" } }, confirming.action === "merge"
 					? t("merge.confirmDirty", { count: confirming.dirtyFiles })
 					: confirming.action === "stashApply"
@@ -2073,10 +2118,20 @@ window.__ModuleLoader__.load({
 						h("span", { className: `${BASE}-flow-end` }, changes.current ?? ""),
 						h(ArrowIcon, { down: false }),
 						h("span", { className: `${BASE}-flow-note` }, t("push.noUpstream")));
+			const pushSummary = changes === void 0 || pushRemotes.length === 0
+				? null
+				: checkedCount > 0
+					? pushUpstream !== void 0 && pushUpstream !== ""
+						? h("div", { className: `${BASE}-panel-summary` }, t("push.summaryChecked", { count: checkedCount, branch: changes.current ?? "", upstream: pushUpstream }))
+						: h("div", { className: `${BASE}-panel-summary` }, t("push.summaryNoUpstream", { count: checkedCount, branch: changes.current ?? "" }))
+					: (changes?.unpushedCount ?? 0) > 0 && pushUpstream !== void 0 && pushUpstream !== ""
+						? h("div", { className: `${BASE}-panel-summary` }, t("push.summaryCommits", { count: changes.unpushedCount, upstream: pushUpstream }))
+						: null;
 			const pushPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("push.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("push.hint")),
 				pushFlow,
+				pushSummary,
 				changes === void 0
 					? h("div", { className: `${BASE}-empty` }, t("push.loading"))
 					: (changes?.remotes ?? []).length === 0

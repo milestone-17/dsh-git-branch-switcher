@@ -1,8 +1,8 @@
 # Git Branch Switcher for DeepSeek Harness
 
-**A composer chip that shows the current git branch of your session's working directory — TRAE-style branch switching, one-click `git fetch`, and create-a-branch-and-switch, all without leaving the chat.**
+**Keep your git workflow inside the chat.** A composer chip shows the current branch at a glance; one popup lets you switch branches, fetch remotes, commit & push, merge, and stash — without leaving DeepSeek Harness.
 
-在 DeepSeek Harness 输入框工具行显示当前 git 分支的胶囊按钮：TRAE 风格的分支菜单、一键 `git fetch` 同步远端、**新建分支并立即切换过去**（源分支自己选，默认 master）；工作区不干净时先弹确认。界面文案按浏览器语言自动切换（zh / en）。
+**让 git 操作不离开 DSH 聊天窗口。**输入框工具行的胶囊实时显示当前分支，点一下就能切换/新建分支、同步远端、勾选改动提交推送、合并分支、暂存与恢复 —— 不用切到 IDE 或终端，思路不断。
 
 [![release](https://img.shields.io/github/v/release/milestone-17/dsh-git-branch-switcher?label=release)](https://github.com/milestone-17/dsh-git-branch-switcher/releases)
 [![license](https://img.shields.io/github/license/milestone-17/dsh-git-branch-switcher?label=license)](./LICENSE)
@@ -15,20 +15,29 @@
 |---|---|---|
 | ![分支切换菜单](./docs/screenshot.png) | ![新建分支](./docs/screenshot-create.png) | ![同步远端分支](./docs/screenshot-fetch.png) |
 
+> 截图来自 v0.6.0：弹层停靠在输入框上方，推送/合并带来源 → 目标流向，改动列表秒开。
+
+## 适合谁 / Who is this for
+
+- 你在 DSH 里让 AI 改代码，但经常要切到 IDE 或终端看分支、切分支、提交。
+- 你担心 AI 在错误分支上改代码，想一眼看清当前分支。
+- 你希望推送、合并前看清楚“会发生什么”，而不是盲操作。
+
+## 三个核心场景 / Three things it does
+
+1. **看清分支，避免改到 main** — 输入框工具行实时显示当前分支，点一下就能切换或新建分支。
+2. **聊完就推，不用切出去** — 勾选这次对话产生的改动，填一条提交信息，直接提交并推送。
+3. **合并、暂存也留在聊天里** — 来源 → 目标流向一目了然；临时改动先 stash，回头再恢复。
+
 ## 为什么是它 / Why this one
 
-- **胶囊在输入框工具行**（slot `conversation.input.left`），紧贴你打字的地方 —— 不用抬头去找会话头部。
-- **远端分支是完整的一等公民**：一键 `git fetch --all --prune`，远端跟踪分支单独分组，可一键检出为本地跟踪分支。
-- **能建分支**：菜单底部「＋ 新建分支」，选好源分支（默认 `master`）点「创建并切换」，当前会话的工作目录**立刻**落到新分支。
-- **能推送**：「↑ 推送」列出全部未提交改动，**勾选任意一部分** → 填提交信息 → 提交并推送到远端分支（首推自动建上游）；工作区干净时一键推送已有提交。
-- **能合并**：「⇆ 合并」双下拉选来源/目标，目标自动推断为该分支的拉取来源；冲突时列出冲突文件并可一键放弃合并，合并后自动回到你原来的分支。
-- **能暂存**：「≡ 暂存」勾选任意一部分改动先搁置起来（切分支、拉代码前先收好现场）；「暂存列表」随时恢复某一条（可恢复后保留或恢复并删除），也能删除单条或清空全部。
-- **不猜你的意图**：工作区不干净、目标分支不存在时先弹确认；分支名做白名单校验，文件路径按字面量传给 git，不给注入留口子。
-- **弹层不挡输入区**：菜单面板改为挂到页面根节点、停靠在输入卡片**上方**，并按可用空间限高；你的草稿、发送按钮始终可见可点。
-- **方向一目了然**：推送面板显示「本地分支 → 上游远端分支」，合并面板显示「来源 → 目标」，两个下拉之间还有朝下的箭头。
-- **改动列表秒开**：菜单打开时后台预取一次改动快照，推送 / 暂存 / 合并三个面板共用它，不再每次都干等。
+- **不离开聊天**：所有操作从输入框工具行触发，DSH 就是你的心流环境。
+- **不挡草稿**：v0.6.0 起所有面板都停靠在输入框上方，发送按钮和草稿始终可见可点。
+- **方向明确**：推送显示「本地分支 → 上游」，合并显示「来源 → 目标」，不再点错方向。
+- **秒开列表**：菜单打开时预取一次改动快照，推送/暂存/合并共享，不再干等。
+- **先确认再动手**：工作区不干净、目标分支不存在、恢复暂存可能冲突时，都会先让你确认。
+- **安全第一**：分支名白名单校验，文件路径按字面量传给 git，不给注入留口子；除 `git fetch`/`git push` 外不上网。
 - **会话级**：每个会话按各自的工作目录独立显示分支；非 git 目录自动隐藏。
-- **纯本地**：只在本地跑 git，除 `git fetch`/`git push` 外不碰网络，不上传任何数据。
 
 ## 功能对照 / Feature map
 
@@ -71,14 +80,14 @@ dsh plugin --profile desktop install git+https://gitclone.com/github.com/milesto
 
 ### 方式二：预构建包（无需 git）
 
-[Release v0.3.0](https://github.com/milestone-17/dsh-git-branch-switcher/releases/tag/v0.3.0) 附带预构建包：
+[Release 页面](https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest) 附带预构建包：
 
 ```bash
 # 始终是最新版
 dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz
 
 # 或钉住当前版本
-dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.3.0/dsh-git-branch-switcher-0.3.0.tgz
+dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.6.1/dsh-git-branch-switcher-0.6.1.tgz
 ```
 
 ### 方式三：市场索引
@@ -97,11 +106,14 @@ dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher
 
 ### ⚠️ 安装后需要重启 DeepSeek Harness 应用
 
-插件图在应用启动时组装，安装/更新/卸载插件后**重启应用才会生效**（正在运行的会话不受影响，重启后从侧栏恢复即可）。若重启后仍看不到分支胶囊，先确认会话的工作目录确实是一个 git 仓库 —— 非 git 目录下胶囊会按设计自动隐藏。
+插件图在应用启动时组装，安装/更新/卸载插件后**重启应用才会生效**（正在运行的会话不受影响，重启后从侧栏恢复即可）。
+
+- 当前会话的工作目录必须是 git 仓库，胶囊才会显示；非 git 目录下自动隐藏。
+- 第一次安装后如果还没打开 git 项目，会看到一个提示状态的「Git」胶囊，鼠标悬停即可看到说明（点一下就会消失）。
 
 ## 收录状态 / Where to find it
 
-- 社区插件目录 [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（PR: [#12252](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/12252)）—— 该目录是 [dsh-market](https://github.com/dsh-market/dsh-market) 市场插件目录的来源，合并后市场自动收录。
+- 官方插件目录 [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) —— 已收录（[#12252](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/12252)），v0.6.x 描述更新在 [#13431](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/13431)。该目录是 [dsh-market](https://github.com/dsh-market/dsh-market) 市场插件目录的来源。
 - 社区插件注册表 [zhu1090093659/dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins/pull/82)。
 - 仓库带 `dsh-plugin` / `deepseek-harness` GitHub topic，可按主题检索。
 - 能力卡：[unStone/dsh-xray](https://unstone.github.io/dsh-xray/p/milestone-17__dsh-git-branch-switcher.html)（C3：可 spawn 子进程 / 执行系统命令 —— git 类插件的正常评级）。
