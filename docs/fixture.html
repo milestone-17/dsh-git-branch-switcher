@@ -26,7 +26,7 @@
 	const zodRuntime = window.Zod || (window.zod && (window.zod.z || window.zod));
 	const statusValue = { repository: true, toplevel: "C:/repo", current: "feature/pay", detached: false,
 		branches: [{ name: "master", current: false }, { name: "main", current: false }, { name: "feature/pay", current: true }],
-		remoteBranches: [{ name: "origin/main", short: "main", remote: "origin", local: true }], dirtyLines: 2 };
+		remoteBranches: [{ name: "origin/main", short: "main", remote: "origin", local: false }, { name: "origin/release", short: "release", remote: "origin", local: false }], dirtyLines: 2 };
 	const changesValue = { repository: true, current: "feature/pay",
 		files: [
 			{ path: "src/pay.js", kind: "modified" },
@@ -101,7 +101,7 @@
 		}
 	};
 	const script = document.createElement("script");
-	script.src = "./client.js";
+	script.src = "../client.js";
 	script.onerror = () => { window.__GBS_ERR__ = "client.js script load error"; };
 	document.head.append(script);
 })();
