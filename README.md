@@ -11,11 +11,11 @@
 
 ![Icon](./icon.svg)
 
-| 分支菜单 / Branch menu | 新建分支 / New branch | 同步远端 / Fetch |
-|---|---|---|
-| ![分支切换菜单](./docs/screenshot.png) | ![新建分支](./docs/screenshot-create.png) | ![同步远端分支](./docs/screenshot-fetch.png) |
+| 分支菜单 / Branch menu | 新建分支 / New branch | 同步远端 / Fetch | 推送改动 / Push |
+|---|---|---|---|
+| ![分支切换菜单](./docs/screenshot.png) | ![新建分支](./docs/screenshot-create.png) | ![同步远端分支](./docs/screenshot-fetch.png) | ![推送改动](./docs/screenshot-push.png) |
 
-> 截图来自 v0.6.0：弹层停靠在输入框上方，推送/合并带来源 → 目标流向，改动列表秒开。
+> 截图来自 v0.6.1：弹层停靠在输入框上方，推送面板显示结果摘要，改动列表秒开。
 
 ## 适合谁 / Who is this for
 
