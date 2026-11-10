@@ -458,6 +458,11 @@ try {
 	const worktreeDiff = await service.diff({ sessionId: "session-1", from: "HEAD", to: "WORKTREE" });
 	assert.ok(worktreeDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "added"), "diff against WORKTREE finds the new file");
 	assert.ok(worktreeDiff.patch.includes("demo content"), "WORKTREE diff patch contains the new content");
+	writeFileSync(join(repository, "untracked-demo.txt"), "untracked content\n");
+	const worktreeWithUntracked = await service.diff({ sessionId: "session-1", from: "HEAD", to: "WORKTREE" });
+	assert.ok(worktreeWithUntracked.files.some((row) => row.path === "untracked-demo.txt" && row.kind === "untracked"), "diff against WORKTREE includes untracked files");
+	assert.ok(worktreeWithUntracked.patch.includes("+untracked content"), "WORKTREE diff patch includes untracked file content");
+	rmSync(join(repository, "untracked-demo.txt"), { force: true });
 	await assert.rejects(
 		() => service.diff({ sessionId: "session-1", from: "", to: after.snapshotId }),
 		(error) => error?.code === "branchSwitcher/invalid-snapshot",

@@ -1,3 +1,21 @@
+# v0.7.3 — 修复 diff「全部变更」不显示未跟踪文件的问题
+
+## 修复 / Fixes
+
+- **diff 的「全部变更」现在包含未跟踪文件**：之前 `git diff HEAD` 不会列出 untracked 文件，导致工作区明明有一堆新文件，diff 面板却显示「没有可显示的变更」。现在改走 `git status --porcelain -z` 取文件列表，未跟踪文件会标为「未跟踪」；同时会为未跟踪文本文件合成统一 diff patch，点击后能看到完整新增内容。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.2 — 修复 diff「全部变更」加载卡住的问题
 
 ## 修复 / Fixes

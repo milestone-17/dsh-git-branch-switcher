@@ -466,29 +466,73 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		};
 		const fromTree = resolveTree(request.from);
 		const toTree = resolveTree(request.to);
-		const worktreeArgs = (tree) => tree === "WORKTREE" ? [] : [tree];
-		const nameStatusArgs = ["diff", "--name-status", ...worktreeArgs(fromTree)];
-		if (toTree !== "WORKTREE") nameStatusArgs.push(toTree);
-		const patchArgs = ["diff", ...worktreeArgs(fromTree)];
-		if (toTree !== "WORKTREE") patchArgs.push(toTree);
-		const [nameStatus, patch] = await Promise.all([
-			runGit(this.ctx, toplevel, nameStatusArgs, signal),
-			runGit(this.ctx, toplevel, patchArgs, signal)
-		]);
-		if (nameStatus.exitCode !== 0) {
-			throw new RemoteError("branchSwitcher/diff-failed", gitMessage(nameStatus, "git diff failed"), {});
+
+		let files;
+		let patch;
+		if (toTree === "WORKTREE") {
+			// Use status --porcelain so untracked files are included in the list,
+			// then diff HEAD for the tracked-file patch and synthesize hunks for
+			// untracked text files.
+			const [statusResult, patchResult] = await Promise.all([
+				runGit(this.ctx, toplevel, ["status", "--porcelain", "-z"], signal),
+				runGit(this.ctx, toplevel, ["diff", ...(fromTree === "WORKTREE" ? [] : [fromTree])], signal)
+			]);
+			if (statusResult.exitCode !== 0) {
+				throw new RemoteError("branchSwitcher/diff-failed", gitMessage(statusResult, "git status failed"), {});
+			}
+			files = this.parseChanges(statusResult.stdout);
+			patch = patchResult.exitCode === 0 ? patchResult.stdout : "";
+			const UNTRACKED_PATCH_LIMIT = 100 * 1024;
+			for (const row of files) {
+				if (row.kind !== "untracked") continue;
+				const fullPath = path.join(toplevel, row.path);
+				let content;
+				try {
+					const stat = await fs.stat(fullPath);
+					if (!stat.isFile() || stat.size > UNTRACKED_PATCH_LIMIT) continue;
+					content = await fs.readFile(fullPath, "utf8");
+				} catch {
+					continue;
+				}
+				const lines = content.split(/\r?\n/u);
+				// Ensure the content ends with a newline so the synthetic hunk
+				// matches git's usual output; if not, the last line is incomplete.
+				const hasTrailingNewline = content.length > 0 && content.endsWith("\n");
+				if (!hasTrailingNewline && lines.length > 0) lines.pop();
+				patch += `\ndiff --git a/${row.path} b/${row.path}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${row.path}\n@@ -0,0 +1,${lines.length} @@\n`;
+				for (const line of lines) {
+					patch += `+${line}\n`;
+				}
+				if (!hasTrailingNewline && content.length > 0) {
+					patch += `\\ No newline at end of file\n`;
+				}
+			}
+		} else {
+			const worktreeArgs = (tree) => tree === "WORKTREE" ? [] : [tree];
+			const nameStatusArgs = ["diff", "--name-status", ...worktreeArgs(fromTree)];
+			if (toTree !== "WORKTREE") nameStatusArgs.push(toTree);
+			const patchArgs = ["diff", ...worktreeArgs(fromTree)];
+			if (toTree !== "WORKTREE") patchArgs.push(toTree);
+			const [nameStatus, patchResult] = await Promise.all([
+				runGit(this.ctx, toplevel, nameStatusArgs, signal),
+				runGit(this.ctx, toplevel, patchArgs, signal)
+			]);
+			if (nameStatus.exitCode !== 0) {
+				throw new RemoteError("branchSwitcher/diff-failed", gitMessage(nameStatus, "git diff failed"), {});
+			}
+			files = [];
+			for (const line of nameStatus.stdout.split(/\r?\n/u)) {
+				if (line.trim().length === 0) continue;
+				const parts = line.split("\t");
+				const status = parts[0];
+				const kind = status === "A" ? "added" : status === "D" ? "deleted" : status.startsWith("R") ? "renamed" : "modified";
+				const entry = { kind, path: parts[1] };
+				if (kind === "renamed" && parts.length > 2) entry.previousPath = parts[2];
+				files.push(entry);
+			}
+			patch = patchResult.exitCode === 0 ? patchResult.stdout : "";
 		}
-		const files = [];
-		for (const line of nameStatus.stdout.split(/\r?\n/u)) {
-			if (line.trim().length === 0) continue;
-			const parts = line.split("\t");
-			const status = parts[0];
-			const kind = status === "A" ? "added" : status === "D" ? "deleted" : status.startsWith("R") ? "renamed" : "modified";
-			const entry = { kind, path: parts[1] };
-			if (kind === "renamed" && parts.length > 2) entry.previousPath = parts[2];
-			files.push(entry);
-		}
-		return { files, patch: patch.exitCode === 0 ? patch.stdout : "" };
+		return { files, patch };
 	}
 
 	/**
