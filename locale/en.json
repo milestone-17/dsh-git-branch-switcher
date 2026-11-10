@@ -112,5 +112,14 @@
   "error.fetchStaleHost": "The running host is an older version without the fetch method. Restart DeepSeek Harness to enable remote syncing.",
   "error.diffFailed": "Diff failed: {message}",
   "diff.unified": "Unified",
-  "diff.split": "Split"
+  "diff.split": "Split",
+  "gitPanel.title": "Git",
+  "gitPanel.branches": "Branches",
+  "gitPanel.push": "Push",
+  "gitPanel.merge": "Merge",
+  "gitPanel.create": "Create",
+  "gitPanel.stash": "Stash",
+  "gitPanel.refresh": "Refresh",
+  "gitPanel.openMenu": "Open branch menu",
+  "gitPanel.loading": "Loading…"
 }

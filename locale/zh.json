@@ -112,5 +112,14 @@
   "error.fetchStaleHost": "当前运行的宿主版本较旧，还没有同步能力。请完全退出并重启 DeepSeek Harness 应用后再试。",
   "error.diffFailed": "Diff 加载失败：{message}",
   "diff.unified": "上下对比",
-  "diff.split": "左右对比"
+  "diff.split": "左右对比",
+  "gitPanel.title": "Git",
+  "gitPanel.branches": "分支",
+  "gitPanel.push": "推送",
+  "gitPanel.merge": "合并",
+  "gitPanel.create": "新建",
+  "gitPanel.stash": "暂存",
+  "gitPanel.refresh": "刷新",
+  "gitPanel.openMenu": "打开分支菜单",
+  "gitPanel.loading": "加载中…"
 }

@@ -342,8 +342,8 @@ assert.deepEqual(exports.inject, ["remote"], "inject declares the remote service
 let unmounted = false;
 let registered;
 let chipComponent;
-let diffTabComponent;
-let diffTitleComponent;
+let gitPanelComponent;
+let gitPanelTitleComponent;
 const statusValue = { repository: true, current: "main", detached: false, branches: [{ name: "main", current: true }], dirtyLines: 0 };
 const scope = {
 	remote: {
@@ -368,9 +368,9 @@ const scope = {
 				registered = definition;
 				chipComponent = component;
 			} else if (definition.name === "sidebar.right.pane.tab") {
-				diffTabComponent = component;
+				gitPanelComponent = component;
 			} else if (definition.name === "sidebar.right.pane.tab.title") {
-				diffTitleComponent = component;
+				gitPanelTitleComponent = component;
 			}
 			return definition;
 		}
@@ -787,6 +787,20 @@ const panelNode = () => findByClass(surface.tree(), "dshgbs-menu")[0];
 	assert.ok(diffCall !== void 0, "opening the diff view calls the diff method");
 	assert.equal(diffCall.input.from, "HEAD", "all-changes scope compares against HEAD");
 	assert.equal(diffCall.input.to, "WORKTREE", "all-changes scope diffs HEAD against the working tree directly");
+}
+
+// --- the right-sidebar GitPanel renders with tabs ---
+{
+	const props = registered.inject("session-panel");
+	surface.mount(gitPanelComponent, { sessionId: "session-panel", call: props.call });
+	await surface.settle();
+	const tabs = findByClass(surface.tree(), "dshgbs-gitpanel-tab");
+	assert.ok(tabs.length >= 6, "GitPanel shows all tabs");
+	const branch = findByClass(surface.tree(), "dshgbs-gitpanel-branch")[0];
+	assert.ok(branch !== void 0, "GitPanel shows current branch");
+	surface.mount(gitPanelTitleComponent, {});
+	const titleTree = surface.tree();
+	assert.ok(textOf(titleTree).includes("Git"), "GitPanel title says Git");
 }
 
 // --- the shipped locale files match the inline dictionaries ---

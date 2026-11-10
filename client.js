@@ -1116,6 +1116,15 @@ window.__ModuleLoader__.load({
 			"diff.empty": "No changes to show.",
 			"diff.unified": "Unified",
 			"diff.split": "Split",
+			"gitPanel.title": "Git",
+			"gitPanel.branches": "Branches",
+			"gitPanel.push": "Push",
+			"gitPanel.merge": "Merge",
+			"gitPanel.create": "Create",
+			"gitPanel.stash": "Stash",
+			"gitPanel.refresh": "Refresh",
+			"gitPanel.openMenu": "Open branch menu",
+			"gitPanel.loading": "Loading…",
 			"kind.added": "added",
 			"kind.modified": "modified",
 			"kind.deleted": "deleted",
@@ -1232,6 +1241,15 @@ window.__ModuleLoader__.load({
 			"diff.empty": "没有可显示的变更。",
 			"diff.unified": "上下对比",
 			"diff.split": "左右对比",
+			"gitPanel.title": "Git",
+			"gitPanel.branches": "分支",
+			"gitPanel.push": "推送",
+			"gitPanel.merge": "合并",
+			"gitPanel.create": "新建",
+			"gitPanel.stash": "暂存",
+			"gitPanel.refresh": "刷新",
+			"gitPanel.openMenu": "打开分支菜单",
+			"gitPanel.loading": "加载中…",
 			"kind.added": "新增",
 			"kind.modified": "修改",
 			"kind.deleted": "删除",
@@ -1403,6 +1421,28 @@ window.__ModuleLoader__.load({
 .${BASE}-rightbar-tab{display:flex;flex-direction:column;height:100%;overflow:hidden}
 .${BASE}-rightbar-header{padding:12px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));font-weight:600;font-size:14px;color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-rightbar-title{display:inline-flex;align-items:center;gap:6px}
+.${BASE}-gitpanel{display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--dsw-alias-bg-base,#fff)}
+.${BASE}-gitpanel-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
+.${BASE}-gitpanel-title{font-weight:600;font-size:14px;color:var(--dsw-alias-label-primary,#1a1a1a)}
+.${BASE}-gitpanel-branch{flex:1;font-size:13px;color:var(--dsw-alias-label-secondary,#666);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.${BASE}-gitpanel-refresh{margin-left:auto;padding:2px 8px;font-size:11px}
+.${BASE}-gitpanel-tabs{display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));background:var(--dsw-alias-bg-base,#fff)}
+.${BASE}-gitpanel-tab{flex:1;padding:6px 4px;font-size:12px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary,#666);cursor:pointer;transition:background .15s var(--${BASE}-ease),color .15s var(--${BASE}-ease)}
+.${BASE}-gitpanel-tab:hover{background:var(--dsw-alias-bg-hover,rgba(127,127,127,.06))}
+.${BASE}-gitpanel-tab-active{background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.1));color:var(--dsw-alias-label-primary,#1a1a1a);font-weight:600}
+.${BASE}-gitpanel-body{flex:1;overflow:auto;padding:8px}
+.${BASE}-gitpanel-section{display:flex;flex-direction:column;gap:8px}
+.${BASE}-gitpanel-subtitle{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary,#666);padding:4px 0}
+.${BASE}-gitpanel-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;transition:background .15s var(--${BASE}-ease)}
+.${BASE}-gitpanel-row:hover{background:var(--dsw-alias-bg-hover,rgba(127,127,127,.06))}
+.${BASE}-gitpanel-row-name{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.${BASE}-gitpanel-row-current{font-weight:600;color:var(--dsw-alias-label-primary,#1a1a1a)}
+.${BASE}-gitpanel-row-tag{font-size:10px;margin-left:6px;padding:1px 5px;border-radius:4px;background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.1));color:var(--dsw-alias-label-secondary,#666)}
+.${BASE}-gitpanel-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.${BASE}-field{display:flex;flex-direction:column;gap:4px}
+.${BASE}-field-label{font-size:12px;color:var(--dsw-alias-label-secondary,#666)}
+.${BASE}-input,.${BASE}-select{padding:6px 8px;font-size:13px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2));border-radius:6px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1a1a1a)}
+.${BASE}-input:focus,.${BASE}-select:focus{outline:none;border-color:var(--dsw-alias-border-active,rgba(127,127,127,.5))}
 .${BASE}-diff-mode-button{margin-left:8px;padding:2px 8px;font-size:11px}
 .${BASE}-diff-split{display:flex;flex-direction:column;overflow:auto;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px;position:relative}
 .${BASE}-diff-split-header{display:grid;position:sticky;top:0;background:var(--dsw-alias-bg-base,#fff);border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));z-index:1}
@@ -1855,10 +1895,315 @@ window.__ModuleLoader__.load({
 				h("div", { className: `${BASE}-diff-files` }, fileRows),
 				diffBody);
 		};
+		/**
+		 * Right-sidebar Git panel with tabs for branches, push, merge, create,
+		 * stash and diff. Each tab reuses the same remote calls and UI patterns
+		 * as the composer chip menu, so the sidebar is an enlarged, persistent
+		 * view of the git workflow.
+		 */
+		const GitPanel = (props) => {
+			const { sessionId, call } = props;
+			const [activeTab, setActiveTab] = React.useState("branches");
+			const [status, setStatus] = React.useState(void 0);
+			const [changes, setChanges] = React.useState(void 0);
+			const [busy, setBusy] = React.useState(false);
+			const [error, setError] = React.useState(void 0);
+			const [notice, setNotice] = React.useState(void 0);
+			const loadStatus = React.useCallback(async () => {
+				try {
+					const value = await call("status", { sessionId });
+					setStatus(value);
+					setError(void 0);
+				} catch (cause) {
+					setError(String(cause?.message ?? cause));
+				}
+			}, [call, sessionId]);
+			const loadChanges = React.useCallback(async () => {
+				try {
+					const value = await call("changes", { sessionId });
+					setChanges(value);
+				} catch (cause) {
+					console.warn("[git-branch-switcher] GitPanel changes failed", cause);
+				}
+			}, [call, sessionId]);
+			React.useEffect(() => {
+				let cancelled = false;
+				loadStatus();
+				loadChanges();
+				return () => { cancelled = true; };
+			}, [loadStatus, loadChanges]);
+			const run = async (label, operation) => {
+				setBusy(true);
+				setNotice(void 0);
+				setError(void 0);
+				try {
+					const result = await operation();
+					setNotice(typeof result === "string" ? result : label);
+					await loadStatus();
+					await loadChanges();
+					return result;
+				} catch (cause) {
+					setError(String(cause?.message ?? cause));
+					throw cause;
+				} finally {
+					setBusy(false);
+				}
+			};
+			// --- branches tab ---
+			const [switching, setSwitching] = React.useState(void 0);
+			const doSwitch = async (branch) => {
+				if (status?.dirtyLines > 0) {
+					setSwitching(branch);
+					return;
+				}
+				await run(t("menu.title"), () => call("checkout", { sessionId, branch }));
+				setSwitching(void 0);
+			};
+			const confirmSwitch = async () => {
+				const branch = switching;
+				if (branch === void 0) return;
+				await run(t("menu.title"), () => call("checkout", { sessionId, branch }));
+				setSwitching(void 0);
+			};
+			// --- create tab ---
+			const [newName, setNewName] = React.useState("");
+			const [baseBranch, setBaseBranch] = React.useState("");
+			const doCreate = async () => {
+				if (newName.trim() === "") {
+					setError(t("create.nameRequired"));
+					return;
+				}
+				await run(t("create.title"), () => call("create", { sessionId, name: newName.trim(), base: baseBranch || void 0 }));
+				setNewName("");
+				setBaseBranch("");
+			};
+			// --- push tab ---
+			const [checked, setChecked] = React.useState({});
+			const [pushMessage, setPushMessage] = React.useState("");
+			React.useEffect(() => {
+				if (changes?.files !== void 0) {
+					const next = {};
+					for (const file of changes.files) next[file.path] = true;
+					setChecked(next);
+				}
+			}, [changes?.files]);
+			const toggleChecked = (path) => setChecked((prev) => ({ ...prev, [path]: !prev[path] }));
+			const doPush = async () => {
+				const files = Object.entries(checked).filter(([, value]) => value === true).map(([path]) => path);
+				if (files.length === 0 && (changes?.unpushedCount ?? 0) === 0) {
+					setError(t("push.nothingStaged"));
+					return;
+				}
+				await run(t("push.title"), () => call("push", { sessionId, message: pushMessage.trim() || void 0, files }));
+				setPushMessage("");
+			};
+			// --- merge tab ---
+			const branches = (status?.branches ?? []).map((b) => b.name);
+			const [mergeSource, setMergeSource] = React.useState("");
+			const [mergeTarget, setMergeTarget] = React.useState("");
+			const doMerge = async () => {
+				if (mergeSource === "" || mergeTarget === "") {
+					setError(t("merge.targetPending"));
+					return;
+				}
+				if (mergeSource === mergeTarget) {
+					setError(t("merge.same"));
+					return;
+				}
+				await run(t("merge.title"), () => call("merge", { sessionId, source: mergeSource, target: mergeTarget }));
+			};
+			// --- stash tab ---
+			const [stashRows, setStashRows] = React.useState(void 0);
+			const [stashMessage, setStashMessage] = React.useState("");
+			const [stashMode, setStashMode] = React.useState("list");
+			const loadStash = React.useCallback(async () => {
+				try {
+					const value = await call("stashList", { sessionId });
+					setStashRows(value.stashes ?? []);
+				} catch (cause) {
+					console.warn("[git-branch-switcher] GitPanel stash list failed", cause);
+				}
+			}, [call, sessionId]);
+			React.useEffect(() => { loadStash(); }, [loadStash]);
+			const doStash = async () => {
+				const files = Object.entries(checked).filter(([, value]) => value === true).map(([path]) => path);
+				if (files.length === 0) {
+					setError(t("stash.nothing"));
+					return;
+				}
+				await run(t("stash.title"), () => call("stash", { sessionId, message: stashMessage.trim() || void 0, files }));
+				setStashMessage("");
+				setStashMode("list");
+				await loadStash();
+			};
+			const doStashApply = (ref) => run(t("stash.apply"), () => call("stashApply", { sessionId, ref, pop: false, confirmed: true }));
+			const doStashDrop = (ref) => run(t("stash.drop"), () => call("stashDrop", { sessionId, ref }));
+			// --- diff tab ---
+			const [diffFiles, setDiffFiles] = React.useState(void 0);
+			const [diffPatch, setDiffPatch] = React.useState("");
+			const loadDiff = React.useCallback(async () => {
+				try {
+					const value = await call("diff", { sessionId, from: "HEAD", to: "WORKTREE" });
+					setDiffFiles(value.files);
+					setDiffPatch(value.patch);
+				} catch (cause) {
+					setError(t("error.diffFailed", { message: String(cause?.message ?? cause) }));
+				}
+			}, [call, sessionId]);
+			React.useEffect(() => { if (activeTab === "diff") loadDiff(); }, [activeTab, loadDiff]);
+			// --- render helpers ---
+			const tabs = [
+				{ id: "branches", label: t("gitPanel.branches") },
+				{ id: "diff", label: t("diff.title") },
+				{ id: "push", label: t("gitPanel.push") },
+				{ id: "merge", label: t("gitPanel.merge") },
+				{ id: "create", label: t("gitPanel.create") },
+				{ id: "stash", label: t("gitPanel.stash") }
+			];
+			const tabBar = h("div", { className: `${BASE}-gitpanel-tabs` }, tabs.map((tab) => h("button", {
+				key: tab.id,
+				type: "button",
+				className: `${BASE}-gitpanel-tab ${activeTab === tab.id ? `${BASE}-gitpanel-tab-active` : ""}`,
+				onClick: () => setActiveTab(tab.id)
+			}, tab.label)));
+			const errorLine = error !== void 0 ? h("div", { className: `${BASE}-error` }, error) : null;
+			const noticeLine = notice !== void 0 ? h("div", { className: `${BASE}-notice` }, notice) : null;
+			// branches content
+			const branchesContent = status === void 0
+				? h("div", { className: `${BASE}-empty` }, t("gitPanel.loading"))
+				: h("div", { className: `${BASE}-gitpanel-section` },
+					h("div", { className: `${BASE}-gitpanel-subtitle` }, t("menu.title")),
+					(status?.branches ?? []).map((branch) => h("div", { key: branch.name, className: `${BASE}-gitpanel-row` },
+						h("span", { className: `${BASE}-gitpanel-row-name ${branch.current ? `${BASE}-gitpanel-row-current` : ""}` }, branch.name, branch.current ? h("span", { className: `${BASE}-gitpanel-row-tag` }, t("menu.current")) : null),
+						h("button", {
+							type: "button",
+							className: `${BASE}-button`,
+							disabled: busy || branch.current,
+							onClick: () => doSwitch(branch.name)
+						}, branch.current ? t("menu.current") : t("menu.refresh")))));
+			// create content
+			const createContent = h("div", { className: `${BASE}-gitpanel-section` },
+				h("div", { className: `${BASE}-gitpanel-subtitle` }, t("create.title")),
+				h("label", { className: `${BASE}-field` },
+					h("span", { className: `${BASE}-field-label` }, t("create.name")),
+					h("input", {
+						className: `${BASE}-input`,
+						type: "text",
+						value: newName,
+						placeholder: t("create.namePlaceholder"),
+						onChange: (event) => setNewName(event.target.value)
+					})),
+				h("label", { className: `${BASE}-field` },
+					h("span", { className: `${BASE}-field-label` }, t("create.base")),
+					h("select", { className: `${BASE}-select`, value: baseBranch, onChange: (event) => setBaseBranch(event.target.value) },
+						h("option", { value: "" }, status?.current ?? ""),
+						...(status?.branches ?? []).filter((b) => !b.current).map((b) => h("option", { key: b.name, value: b.name }, b.name)))),
+				h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doCreate }, t("create.submit")));
+			// push content
+			const pushFiles = (changes?.files ?? []).map((file) => h("div", { key: file.path, className: `${BASE}-gitpanel-row` },
+				h("input", {
+					type: "checkbox",
+					checked: checked[file.path] === true,
+					onChange: () => toggleChecked(file.path)
+				}),
+				h("span", { className: `${BASE}-gitpanel-row-name` }, file.path)));
+			const pushContent = changes === void 0
+				? h("div", { className: `${BASE}-empty` }, t("push.loading"))
+				: h("div", { className: `${BASE}-gitpanel-section` },
+					h("div", { className: `${BASE}-gitpanel-subtitle` }, t("push.title")),
+					pushFiles.length === 0 ? h("div", { className: `${BASE}-empty` }, t("push.clean")) : pushFiles,
+					h("label", { className: `${BASE}-field` },
+						h("span", { className: `${BASE}-field-label` }, t("push.commitMessage")),
+						h("input", {
+							className: `${BASE}-input`,
+							type: "text",
+							value: pushMessage,
+							placeholder: t("push.messagePlaceholder"),
+							onChange: (event) => setPushMessage(event.target.value)
+						})),
+					h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doPush }, t("push.submit")));
+			// merge content
+			const mergeContent = h("div", { className: `${BASE}-gitpanel-section` },
+				h("div", { className: `${BASE}-gitpanel-subtitle` }, t("merge.title")),
+				h("label", { className: `${BASE}-field` },
+					h("span", { className: `${BASE}-field-label` }, t("merge.source")),
+					h("select", { className: `${BASE}-select`, value: mergeSource, onChange: (event) => setMergeSource(event.target.value) },
+						h("option", { value: "" }, t("merge.targetPending")),
+						...branches.filter((name) => name !== mergeTarget).map((name) => h("option", { key: name, value: name }, name)))),
+				h("label", { className: `${BASE}-field` },
+					h("span", { className: `${BASE}-field-label` }, t("merge.target")),
+					h("select", { className: `${BASE}-select`, value: mergeTarget, onChange: (event) => setMergeTarget(event.target.value) },
+						h("option", { value: "" }, t("merge.targetPending")),
+						...branches.filter((name) => name !== mergeSource).map((name) => h("option", { key: name, value: name }, name)))),
+				h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doMerge }, t("merge.submit")));
+			// stash content
+			const stashFileRows = (changes?.files ?? []).map((file) => h("div", { key: file.path, className: `${BASE}-gitpanel-row` },
+				h("input", {
+					type: "checkbox",
+					checked: checked[file.path] === true,
+					onChange: () => toggleChecked(file.path)
+				}),
+				h("span", { className: `${BASE}-gitpanel-row-name` }, file.path)));
+			const stashList = (stashRows ?? []).length === 0
+				? h("div", { className: `${BASE}-empty` }, t("stash.empty"))
+				: h("div", null, (stashRows ?? []).map((row) => h("div", { key: row.ref, className: `${BASE}-gitpanel-row` },
+					h("span", { className: `${BASE}-gitpanel-row-name` }, row.message || row.ref),
+					h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => doStashApply(row.ref) }, t("stash.apply")),
+					h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => doStashDrop(row.ref) }, t("stash.drop")))));
+			const stashContent = h("div", { className: `${BASE}-gitpanel-section` },
+				h("div", { className: `${BASE}-gitpanel-subtitle` }, t("stash.title")),
+				stashMode === "list" ? h(React.Fragment, null,
+					stashList,
+					h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => setStashMode("save") }, t("stash.submit")))
+					: h(React.Fragment, null,
+						stashFileRows.length === 0 ? h("div", { className: `${BASE}-empty` }, t("push.clean")) : stashFileRows,
+						h("input", {
+							className: `${BASE}-input`,
+							type: "text",
+							value: stashMessage,
+							placeholder: t("stash.messagePlaceholder"),
+							onChange: (event) => setStashMessage(event.target.value)
+						}),
+						h("div", { className: `${BASE}-gitpanel-actions` },
+							h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => setStashMode("list") }, t("create.cancel")),
+							h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doStash }, t("stash.submit")))));
+			// diff content
+			const diffContent = diffFiles === void 0
+				? h("div", { className: `${BASE}-empty` }, t("diff.loading"))
+				: h(DiffViewer, { files: diffFiles, patch: diffPatch });
+			const contentMap = {
+				branches: branchesContent,
+				create: createContent,
+				push: pushContent,
+				merge: mergeContent,
+				stash: stashContent,
+				diff: diffContent
+			};
+			const currentContent = contentMap[activeTab] ?? branchesContent;
+			return h("div", { className: `${BASE}-gitpanel` },
+				h("div", { className: `${BASE}-gitpanel-header` },
+					h("span", { className: `${BASE}-gitpanel-title` }, t("gitPanel.title")),
+					h("span", { className: `${BASE}-gitpanel-branch` }, status?.current ?? "—"),
+					h("button", {
+						type: "button",
+						className: `${BASE}-button ${BASE}-gitpanel-refresh`,
+						disabled: busy,
+						onClick: () => { loadStatus(); loadChanges(); loadStash(); if (activeTab === "diff") loadDiff(); }
+					}, t("gitPanel.refresh"))),
+				tabBar,
+				errorLine,
+				noticeLine,
+				switching !== void 0 ? h("div", { className: `${BASE}-confirm` },
+					h("div", null, t("confirm.dirty", { count: status?.dirtyLines ?? 0 })),
+					h("div", { className: `${BASE}-gitpanel-actions` },
+						h("button", { type: "button", className: `${BASE}-button`, onClick: () => setSwitching(void 0) }, t("confirm.cancel")),
+						h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: confirmSwitch }, t("confirm.ok")))) : null,
+				h("div", { className: `${BASE}-gitpanel-body` }, currentContent));
+		};
 
 		/** Composer chip: shows the current branch, opens the switcher menu, and mirrors model-selection's popover behavior. */
 		function Chip(props) {
-			const { sessionId, call, layout, sidebarRight, sidebarRightTabs, diffTabKind } = props;
+			const { sessionId, call, layout, sidebarRight, sidebarRightTabs, gitPanelKind } = props;
 			const [status, setStatus] = React.useState(() => statusMemory.get(sessionId));
 			const [open, setOpen] = React.useState(false);
 			const [busy, setBusy] = React.useState(false);
@@ -1910,14 +2255,29 @@ window.__ModuleLoader__.load({
 				}
 			});
 			const togglePanelMode = React.useCallback(() => {
-				setPanelMode((prev) => {
-					const next = !prev;
+				if (sidebarRight !== void 0 && sidebarRight !== null && gitPanelKind !== void 0) {
 					try {
-						localStorage.setItem("dsh-gbs-panel-mode", next ? "1" : "0");
-					} catch {}
-					return next;
-				});
-			}, []);
+						sidebarRight.openTab(gitPanelKind, { revealIfOpened: true });
+					} catch (cause) {
+						console.warn("[git-branch-switcher] openTab failed", cause);
+						setPanelMode((prev) => {
+							const next = !prev;
+							try {
+								localStorage.setItem("dsh-gbs-panel-mode", next ? "1" : "0");
+							} catch {}
+							return next;
+						});
+					}
+				} else {
+					setPanelMode((prev) => {
+						const next = !prev;
+						try {
+							localStorage.setItem("dsh-gbs-panel-mode", next ? "1" : "0");
+						} catch {}
+						return next;
+					});
+				}
+			}, [sidebarRight, gitPanelKind]);
 			const rootRef = React.useRef(void 0);
 			const triggerRef = React.useRef(void 0);
 			const menuRef = React.useRef(void 0);
@@ -2611,9 +2971,9 @@ window.__ModuleLoader__.load({
 						disabled: busy,
 						onClick: () => {
 							setOpen(false);
-							if (sidebarRight !== void 0 && sidebarRight !== null && diffTabKind !== void 0) {
+							if (sidebarRight !== void 0 && sidebarRight !== null && gitPanelKind !== void 0) {
 								try {
-									sidebarRight.openTab(diffTabKind, { revealIfOpened: true });
+									sidebarRight.openTab(gitPanelKind, { revealIfOpened: true });
 								} catch (cause) {
 									console.warn("[git-branch-switcher] openTab failed", cause);
 									if (layout !== void 0 && layout !== null) {
@@ -3048,6 +3408,7 @@ window.__ModuleLoader__.load({
 						: h(DiffViewer, { files: diffFiles, patch: diffPatch }));
 		};
 		const DiffTabTitle = () => h("span", { className: `${BASE}-rightbar-title` }, t("diff.title"));
+		const GitPanelTitle = () => h("span", { className: `${BASE}-rightbar-title` }, t("gitPanel.title"));
 		//#endregion
 
 		//#region plugin
@@ -3078,14 +3439,14 @@ window.__ModuleLoader__.load({
 				const layout = child.layout;
 				const sidebarRight = child.sidebarRight;
 				const sidebarRightTabs = child.sidebarRightTabs;
-				const DIFF_TAB_KIND = "git-branch-switcher-diff";
-				const DIFF_TAB_ID = "git-branch-switcher-diff";
+				const GIT_PANEL_KIND = "git-branch-switcher";
+				const GIT_PANEL_ID = "git-branch-switcher";
 				child.effect(() => sidebarRightTabs.register({
-					id: DIFF_TAB_ID,
-					kind: DIFF_TAB_KIND,
+					id: GIT_PANEL_ID,
+					kind: GIT_PANEL_KIND,
 					priority: "extension",
-					title: () => t("diff.title")
-				}), "git-branch-switcher: diff tab type");
+					title: () => t("gitPanel.title")
+				}), "git-branch-switcher: git panel type");
 				child.slots.inject(SLOT_NAME, () => child.slots.register({
 					name: SLOT_NAME,
 					id: SLOT_ID,
@@ -3096,23 +3457,23 @@ window.__ModuleLoader__.load({
 						layout,
 						sidebarRight,
 						sidebarRightTabs,
-						diffTabKind: DIFF_TAB_KIND
+						gitPanelKind: GIT_PANEL_KIND
 					})
 				}, (props) => h(ChipErrorBoundary, null, h(Chip, props))));
 				child.slots.inject("sidebar.right.pane.tab", () => child.slots.register({
 					name: "sidebar.right.pane.tab",
-					id: "git-branch-switcher-diff-body",
-					key: DIFF_TAB_KIND,
+					id: "git-branch-switcher-body",
+					key: GIT_PANEL_KIND,
 					inject: (sessionId) => ({
 						sessionId,
 						call: invoke
 					})
-				}, DiffTab));
+				}, GitPanel));
 				child.slots.inject("sidebar.right.pane.tab.title", () => child.slots.register({
 					name: "sidebar.right.pane.tab.title",
-					id: "git-branch-switcher-diff-title",
-					key: DIFF_TAB_KIND
-				}, DiffTabTitle));
+					id: "git-branch-switcher-title",
+					key: GIT_PANEL_KIND
+				}, GitPanelTitle));
 			});
 			try {
 				await scope;
