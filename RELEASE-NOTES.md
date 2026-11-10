@@ -1,3 +1,21 @@
+# v0.7.1 — 修复 diff「全部变更」为空的问题
+
+## 修复 / Fixes
+
+- **diff 的「全部变更」现在能正确显示改动**：之前错误地传了 `from=HEAD, to=HEAD`，导致无论工作区有多少改动都显示「没有可显示的变更」。现在会先用 `snapshot` 捕获当前工作区，再对比 `HEAD → 当前工作区`。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.0 — 侧栏模式 + 查看变更 / Diff 视图
 
 这一版解决两个长期痛点：**分支面板太窄** 和 **想看 AI 这一轮改了什么必须切到 IDE**。

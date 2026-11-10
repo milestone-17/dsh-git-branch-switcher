@@ -705,6 +705,24 @@ const panelNode = () => findByClass(surface.tree(), "dshgbs-menu")[0];
 	assert.ok(textOf(flows[0]).includes("no upstream"), "the flow strip says the upstream is still open");
 }
 
+// --- diff with scope "all" captures the working tree and compares it to HEAD ---
+{
+	const mounted = mountChip({ sessionId: "session-diff" });
+	await surface.settle();
+	chipButton().props.onClick();
+	await surface.settle();
+	const diffEntry = findByText(surface.tree(), "Diff").filter((node) => node.props?.onClick !== void 0).pop();
+	assert.ok(diffEntry !== void 0, "the diff entry exists in the menu footer");
+	diffEntry.props.onClick();
+	await surface.settle();
+	const snapshotCall = mounted.calls.find((entry) => entry.method === "snapshot");
+	assert.ok(snapshotCall !== void 0, "opening the diff view captures a working-tree snapshot");
+	const diffCall = mounted.calls.find((entry) => entry.method === "diff");
+	assert.ok(diffCall !== void 0, "opening the diff view calls the diff method");
+	assert.equal(diffCall.input.from, "HEAD", "all-changes scope compares against HEAD");
+	assert.ok(typeof diffCall.input.to === "string" && diffCall.input.to !== "HEAD", "all-changes scope compares HEAD to the current working-tree snapshot");
+}
+
 // --- the shipped locale files match the inline dictionaries ---
 {
 	const source = readFileSync(join(here, "..", "client.js"), "utf8");
