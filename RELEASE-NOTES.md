@@ -1,3 +1,21 @@
+# v0.7.4 — 修复 diff 面板报错「branchSwitcher[diff] is not a function」
+
+## 修复 / Fixes
+
+- **补声明 Host `snapshot` / `diff` 方法**：v0.7.0-v0.7.3 只在 Host `index.js` 里实现了方法，却漏了在 Client `createTypertRemoteInfo` 里声明，导致 DSH 运行时没有真正挂载这两个方法，点击「查看变更」就报 `child.remote.branchSwitcher[diff] is not a function`。现在补上了完整的 request/result codec 与 Remote 方法声明。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.3 — 修复 diff「全部变更」不显示未跟踪文件的问题
 
 ## 修复 / Fixes

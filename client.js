@@ -340,6 +340,38 @@ window.__ModuleLoader__.load({
 			"ref": zod.z.string(),
 			"all": zod.z.boolean().optional()
 		});
+		const $snapshot_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"label": zod.z.string().optional().describe("Optional label for the snapshot.")
+		});
+		const $snapshot_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"label": zod.z.string().optional()
+		});
+		const $snapshot_result = () => $snapshot_result$value ??= zod.z.object({
+			"snapshotId": zod.z.string().describe("Opaque snapshot identifier."),
+			"at": zod.z.number().describe("Timestamp when the snapshot was captured.")
+		});
+		let $snapshot_result$value;
+		const $diff_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"from": zod.z.string().describe("Baseline snapshot id or HEAD."),
+			"to": zod.z.string().describe("Target snapshot id, HEAD, or WORKTREE.")
+		});
+		const $diff_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"from": zod.z.string(),
+			"to": zod.z.string()
+		});
+		const $diff_result = () => $diff_result$value ??= zod.z.object({
+			"files": zod.z.array(zod.z.object({
+				"path": zod.z.string(),
+				"kind": zod.z.enum(["added", "modified", "deleted", "renamed", "untracked"]),
+				"previousPath": zod.z.string().optional()
+			})).describe("Changed files with their kind."),
+			"patch": zod.z.string().describe("Unified diff patch.")
+		});
+		let $diff_result$value;
 		const changesRequestCodec = () => ({
 			mode: "strict",
 			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#ChangesRequest",
@@ -365,6 +397,64 @@ window.__ModuleLoader__.load({
 					inferTargetFor: { type: "string" }
 				},
 				required: ["sessionId"],
+				additionalProperties: false
+			}
+		});
+		const snapshotRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#SnapshotRequest",
+			create: $snapshot_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					label: { type: "string", description: "Optional label for the snapshot." }
+				},
+				required: ["sessionId"],
+				additionalProperties: true
+			}
+		});
+		const snapshotRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#SnapshotRequest",
+			create: $snapshot_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					label: { type: "string" }
+				},
+				required: ["sessionId"],
+				additionalProperties: false
+			}
+		});
+		const diffRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffRequest",
+			create: $diff_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					from: { type: "string", description: "Baseline snapshot id or HEAD." },
+					to: { type: "string", description: "Target snapshot id, HEAD, or WORKTREE." }
+				},
+				required: ["sessionId", "from", "to"],
+				additionalProperties: true
+			}
+		});
+		const diffRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffRequest",
+			create: $diff_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					from: { type: "string" },
+					to: { type: "string" }
+				},
+				required: ["sessionId", "from", "to"],
 				additionalProperties: false
 			}
 		});
@@ -741,6 +831,46 @@ window.__ModuleLoader__.load({
 						jsonSchema: { type: "object", additionalProperties: true }
 					}
 				},
+				"branchSwitcher/snapshot": {
+					service: "branchSwitcher",
+					description: "Capture the current working tree as a snapshot for later comparison.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity and an optional label.",
+						source: "json",
+						codec: snapshotRequestCodec(),
+						strictCodec: snapshotRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#SnapshotResult",
+						create: $snapshot_result,
+						description: "the snapshot id and timestamp.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/diff": {
+					service: "branchSwitcher",
+					description: "Compute a diff between two snapshots or between a snapshot and the working tree.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity, from id, and to id.",
+						source: "json",
+						codec: diffRequestCodec(),
+						strictCodec: diffRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffResult",
+						create: $diff_result,
+						description: "file list with change kinds and the unified diff patch.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
 				"branchSwitcher/push": {
 					service: "branchSwitcher",
 					description: "Stage the chosen subset of changes, commit them, and push the branch.",
@@ -996,7 +1126,8 @@ window.__ModuleLoader__.load({
 			"hint.dismiss": "Got it",
 			"error.failed": "Branch operation failed: {message}",
 			"error.fetch": "Fetch failed: {message}",
-			"error.fetchStaleHost": "The running host is an older version without the fetch method. Restart DeepSeek Harness to enable remote syncing."
+			"error.fetchStaleHost": "The running host is an older version without the fetch method. Restart DeepSeek Harness to enable remote syncing.",
+			"error.diffFailed": "Diff failed: {message}"
 		};
 		const zh = {
 			"chip.detached": "游离 HEAD",
@@ -1107,7 +1238,8 @@ window.__ModuleLoader__.load({
 			"hint.dismiss": "知道了",
 			"error.failed": "分支操作失败：{message}",
 			"error.fetch": "同步远端分支失败：{message}",
-			"error.fetchStaleHost": "当前运行的宿主版本较旧，还没有同步能力。请完全退出并重启 DeepSeek Harness 应用后再试。"
+			"error.fetchStaleHost": "当前运行的宿主版本较旧，还没有同步能力。请完全退出并重启 DeepSeek Harness 应用后再试。",
+			"error.diffFailed": "Diff 加载失败：{message}"
 		};
 		const isChinese = () => /^zh\b/i.test(navigator.language ?? "");
 		const dictionary = () => isChinese() ? zh : en;
@@ -1595,10 +1727,12 @@ window.__ModuleLoader__.load({
 					setDiffPatch(result.patch);
 					if (result.files.length > 0) setDiffSelected(result.files[0].path);
 				} catch (cause) {
+					const message = String(cause?.message ?? cause);
 					console.warn("[git-branch-switcher] diff failed", cause);
+					setError(t("error.diffFailed", { message }));
 					setDiffFiles([]);
 				}
-			}, [call, sessionId, recordSnapshot]);
+			}, [call, sessionId, recordSnapshot, t]);
 			/**
 			 * Fetch the change snapshot in the background while the menu is
 			 * open, so the push and stash panels show their list right away.
