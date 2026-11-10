@@ -1,3 +1,30 @@
+# v0.8.3 — Git 面板质感升级（毛玻璃、圆角、合并流程可视化）
+
+## 改进 / Improvements
+
+- **整体质感提升**：
+  - 面板背景使用柔和渐变；
+  - 顶部标题栏、合并卡片区域加入 `backdrop-filter` 毛玻璃模糊；
+  - 圆角、阴影、过渡动效全面升级；
+  - 按钮改为蓝紫渐变主按钮，悬停带光晕。
+- **合并流程可视化**：
+  - 源分支与目标分支以圆角卡片呈现；
+  - 中间加入箭头图标，清晰表达「从...合并到...」的方向；
+  - 分支选择器覆盖整张卡片，点击任意位置即可选择。
+- **GitPanel 专用按钮样式**：避免影响原有 branch chip 和下拉菜单的按钮外观。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.8.2 — 右侧边栏 Git 面板（分支 / 推送 / 合并 / 新建 / 暂存 / 变更）
 
 ## 改进 / Improvements

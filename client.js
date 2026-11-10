@@ -1421,28 +1421,45 @@ window.__ModuleLoader__.load({
 .${BASE}-rightbar-tab{display:flex;flex-direction:column;height:100%;overflow:hidden}
 .${BASE}-rightbar-header{padding:12px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));font-weight:600;font-size:14px;color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-rightbar-title{display:inline-flex;align-items:center;gap:6px}
-.${BASE}-gitpanel{display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--dsw-alias-bg-base,#fff)}
-.${BASE}-gitpanel-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
-.${BASE}-gitpanel-title{font-weight:600;font-size:14px;color:var(--dsw-alias-label-primary,#1a1a1a)}
-.${BASE}-gitpanel-branch{flex:1;font-size:13px;color:var(--dsw-alias-label-secondary,#666);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
-.${BASE}-gitpanel-refresh{margin-left:auto;padding:2px 8px;font-size:11px}
-.${BASE}-gitpanel-tabs{display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));background:var(--dsw-alias-bg-base,#fff)}
-.${BASE}-gitpanel-tab{flex:1;padding:6px 4px;font-size:12px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary,#666);cursor:pointer;transition:background .15s var(--${BASE}-ease),color .15s var(--${BASE}-ease)}
-.${BASE}-gitpanel-tab:hover{background:var(--dsw-alias-bg-hover,rgba(127,127,127,.06))}
-.${BASE}-gitpanel-tab-active{background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.1));color:var(--dsw-alias-label-primary,#1a1a1a);font-weight:600}
-.${BASE}-gitpanel-body{flex:1;overflow:auto;padding:8px}
-.${BASE}-gitpanel-section{display:flex;flex-direction:column;gap:8px}
-.${BASE}-gitpanel-subtitle{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary,#666);padding:4px 0}
-.${BASE}-gitpanel-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;transition:background .15s var(--${BASE}-ease)}
-.${BASE}-gitpanel-row:hover{background:var(--dsw-alias-bg-hover,rgba(127,127,127,.06))}
+.${BASE}-gitpanel{display:flex;flex-direction:column;height:100%;overflow:hidden;background:linear-gradient(180deg,var(--dsw-alias-bg-base,#fff) 0%,var(--dsw-alias-bg-subtle,#f9f9f9) 100%)}
+.${BASE}-gitpanel-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.1));backdrop-filter:blur(12px);background:var(--dsw-alias-bg-base-alpha,rgba(255,255,255,.85))}
+.${BASE}-gitpanel-title{font-weight:700;font-size:15px;color:var(--dsw-alias-label-primary,#1a1a1a);letter-spacing:-.2px}
+.${BASE}-gitpanel-branch{flex:1;font-size:13px;font-weight:500;color:var(--dsw-alias-label-secondary,#555);text-overflow:ellipsis;overflow:hidden;white-space:nowrap;padding:4px 10px;border-radius:20px;background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.08))}
+.${BASE}-gitpanel-refresh{margin-left:auto;padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.15));background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-secondary,#555);cursor:pointer;transition:all .15s var(--${BASE}-ease)}
+.${BASE}-gitpanel-refresh:hover{background:var(--dsw-alias-bg-hover,rgba(127,127,127,.06))}
+.${BASE}-gitpanel-tabs{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.1));background:var(--dsw-alias-bg-base,#fff)}
+.${BASE}-gitpanel-tab{flex:1;padding:7px 4px;font-size:12px;font-weight:500;border:none;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary,#666);cursor:pointer;transition:all .18s var(--${BASE}-ease)}
+.${BASE}-gitpanel-tab:hover{background:var(--dsw-alias-bg-hover,rgba(127,127,127,.06));color:var(--dsw-alias-label-primary,#222)}
+.${BASE}-gitpanel-tab-active{background:linear-gradient(135deg,var(--dsw-alias-bg-pressed,rgba(127,127,127,.12)) 0%,var(--dsw-alias-bg-hover,rgba(127,127,127,.06)) 100%);color:var(--dsw-alias-label-primary,#1a1a1a);font-weight:600;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)}
+.${BASE}-gitpanel-body{flex:1;overflow:auto;padding:14px}
+.${BASE}-gitpanel-section{display:flex;flex-direction:column;gap:12px}
+.${BASE}-gitpanel-subtitle{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary,#666);text-transform:uppercase;letter-spacing:.4px;padding:4px 0}
+.${BASE}-gitpanel-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;transition:background .15s var(--${BASE}-ease);border:1px solid transparent}
+.${BASE}-gitpanel-row:hover{background:var(--dsw-alias-bg-hover,rgba(127,127,127,.05));border-color:var(--dsw-alias-border-l2,rgba(127,127,127,.08))}
 .${BASE}-gitpanel-row-name{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.${BASE}-gitpanel-row-current{font-weight:600;color:var(--dsw-alias-label-primary,#1a1a1a)}
-.${BASE}-gitpanel-row-tag{font-size:10px;margin-left:6px;padding:1px 5px;border-radius:4px;background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.1));color:var(--dsw-alias-label-secondary,#666)}
-.${BASE}-gitpanel-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
-.${BASE}-field{display:flex;flex-direction:column;gap:4px}
-.${BASE}-field-label{font-size:12px;color:var(--dsw-alias-label-secondary,#666)}
-.${BASE}-input,.${BASE}-select{padding:6px 8px;font-size:13px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2));border-radius:6px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1a1a1a)}
-.${BASE}-input:focus,.${BASE}-select:focus{outline:none;border-color:var(--dsw-alias-border-active,rgba(127,127,127,.5))}
+.${BASE}-gitpanel-row-current{font-weight:700;color:var(--dsw-alias-label-primary,#1a1a1a)}
+.${BASE}-gitpanel-row-tag{font-size:10px;margin-left:6px;padding:2px 6px;border-radius:10px;background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.12));color:var(--dsw-alias-label-secondary,#666);font-weight:500}
+.${BASE}-gitpanel-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.${BASE}-field{display:flex;flex-direction:column;gap:5px}
+.${BASE}-field-label{font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary,#555)}
+.${BASE}-input,.${BASE}-select{padding:8px 10px;font-size:13px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.18));border-radius:8px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1a1a1a);box-shadow:0 1px 2px rgba(0,0,0,.02);transition:border-color .15s var(--${BASE}-ease),box-shadow .15s var(--${BASE}-ease)}
+.${BASE}-input:focus,.${BASE}-select:focus{outline:none;border-color:var(--dsw-alias-border-active,rgba(127,127,127,.45));box-shadow:0 0 0 3px var(--dsw-alias-bg-hover,rgba(127,127,127,.08))}
+.${BASE}-gitpanel-button{padding:6px 12px;font-size:12px;font-weight:500;border-radius:8px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.18));background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1a1a1a);cursor:pointer;transition:all .15s var(--${BASE}-ease)}
+.${BASE}-gitpanel-button:hover:not(:disabled){background:var(--dsw-alias-bg-hover,rgba(127,127,127,.06));border-color:var(--dsw-alias-border-active,rgba(127,127,127,.35))}
+.${BASE}-gitpanel-button:disabled{opacity:.5;cursor:not-allowed}
+.${BASE}-gitpanel-button-primary{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);color:#fff;border-color:transparent;box-shadow:0 2px 6px rgba(37,99,235,.25)}
+.${BASE}-gitpanel-button-primary:hover:not(:disabled){background:linear-gradient(135deg,#1d4ed8 0%,#1e40af 100%);box-shadow:0 3px 8px rgba(37,99,235,.35)}
+.${BASE}-merge-flow{display:flex;align-items:center;gap:12px;padding:16px;border-radius:16px;background:linear-gradient(135deg,rgba(245,245,245,.85) 0%,rgba(255,255,255,.9) 100%);border:1px solid rgba(255,255,255,.6);box-shadow:0 8px 28px rgba(0,0,0,.06),0 2px 6px rgba(0,0,0,.03),inset 0 1px 0 rgba(255,255,255,.8);backdrop-filter:blur(10px)}
+.${BASE}-merge-card{position:relative;flex:1;display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:14px;background:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.12));box-shadow:0 2px 8px rgba(0,0,0,.04);transition:all .18s var(--${BASE}-ease);overflow:hidden}
+.${BASE}-merge-card:hover{border-color:var(--dsw-alias-border-active,rgba(127,127,127,.3));box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.${BASE}-merge-card-empty{opacity:.8}
+.${BASE}-merge-card::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(127,127,127,.03) 0%,transparent 60%);pointer-events:none}
+.${BASE}-merge-card-label{font-size:11px;font-weight:600;color:var(--dsw-alias-label-secondary,#888);text-transform:uppercase;letter-spacing:.5px}
+.${BASE}-merge-card-branch{font-size:15px;font-weight:700;color:var(--dsw-alias-label-primary,#1a1a1a);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.${BASE}-merge-select{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.${BASE}-merge-arrow-wrap{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.1));color:var(--dsw-alias-label-secondary,#666);box-shadow:0 2px 6px rgba(0,0,0,.06);flex-shrink:0}
+.${BASE}-merge-arrow{width:18px;height:18px}
+.${BASE}-merge-button{margin-top:8px;padding:10px 16px;font-size:13px;font-weight:600;border-radius:10px}
 .${BASE}-diff-mode-button{margin-left:8px;padding:2px 8px;font-size:11px}
 .${BASE}-diff-split{display:flex;flex-direction:column;overflow:auto;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px;position:relative}
 .${BASE}-diff-split-header{display:grid;position:sticky;top:0;background:var(--dsw-alias-bg-base,#fff);border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));z-index:1}
@@ -1866,7 +1883,7 @@ window.__ModuleLoader__.load({
 			}, [selectedEntry]);
 			const modeButton = selectedEntry === null ? null : h("button", {
 				type: "button",
-				className: `${BASE}-button ${BASE}-diff-mode-button`,
+				className: `${BASE}-gitpanel-button ${BASE}-diff-mode-button`,
 				onClick: toggleMode
 			}, mode === "unified" ? t("diff.split") : t("diff.unified"));
 			const diffBody = selectedEntry === null
@@ -2077,7 +2094,7 @@ window.__ModuleLoader__.load({
 						h("span", { className: `${BASE}-gitpanel-row-name ${branch.current ? `${BASE}-gitpanel-row-current` : ""}` }, branch.name, branch.current ? h("span", { className: `${BASE}-gitpanel-row-tag` }, t("menu.current")) : null),
 						h("button", {
 							type: "button",
-							className: `${BASE}-button`,
+							className: `${BASE}-gitpanel-button ${branch.current ? "" : `${BASE}-gitpanel-button-primary`}`,
 							disabled: busy || branch.current,
 							onClick: () => doSwitch(branch.name)
 						}, branch.current ? t("menu.current") : t("menu.refresh")))));
@@ -2098,7 +2115,7 @@ window.__ModuleLoader__.load({
 					h("select", { className: `${BASE}-select`, value: baseBranch, onChange: (event) => setBaseBranch(event.target.value) },
 						h("option", { value: "" }, status?.current ?? ""),
 						...(status?.branches ?? []).filter((b) => !b.current).map((b) => h("option", { key: b.name, value: b.name }, b.name)))),
-				h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doCreate }, t("create.submit")));
+				h("button", { type: "button", className: `${BASE}-gitpanel-button ${BASE}-gitpanel-button-primary`, disabled: busy, onClick: doCreate }, t("create.submit")));
 			// push content
 			const pushFiles = (changes?.files ?? []).map((file) => h("div", { key: file.path, className: `${BASE}-gitpanel-row` },
 				h("input", {
@@ -2121,21 +2138,37 @@ window.__ModuleLoader__.load({
 							placeholder: t("push.messagePlaceholder"),
 							onChange: (event) => setPushMessage(event.target.value)
 						})),
-					h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doPush }, t("push.submit")));
+					h("button", { type: "button", className: `${BASE}-gitpanel-button ${BASE}-gitpanel-button-primary`, disabled: busy, onClick: doPush }, t("push.submit")));
 			// merge content
+			const ArrowIcon = () => h("svg", { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", className: `${BASE}-merge-arrow` },
+				h("path", { d: "M5 12h14M13 6l6 6-6 6", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }));
+			const mergeSourceCard = h("div", { className: `${BASE}-merge-card ${mergeSource === "" ? `${BASE}-merge-card-empty` : ""}` },
+				h("span", { className: `${BASE}-merge-card-label` }, t("merge.source")),
+				h("select", {
+					className: `${BASE}-merge-select`,
+					value: mergeSource,
+					onChange: (event) => setMergeSource(event.target.value)
+				},
+					h("option", { value: "" }, t("merge.targetPending")),
+					...branches.filter((name) => name !== mergeTarget).map((name) => h("option", { key: name, value: name }, name))),
+				h("span", { className: `${BASE}-merge-card-branch` }, mergeSource || t("merge.targetPending")));
+			const mergeTargetCard = h("div", { className: `${BASE}-merge-card ${mergeTarget === "" ? `${BASE}-merge-card-empty` : ""}` },
+				h("span", { className: `${BASE}-merge-card-label` }, t("merge.target")),
+				h("select", {
+					className: `${BASE}-merge-select`,
+					value: mergeTarget,
+					onChange: (event) => setMergeTarget(event.target.value)
+				},
+					h("option", { value: "" }, t("merge.targetPending")),
+					...branches.filter((name) => name !== mergeSource).map((name) => h("option", { key: name, value: name }, name))),
+				h("span", { className: `${BASE}-merge-card-branch` }, mergeTarget || t("merge.targetPending")));
 			const mergeContent = h("div", { className: `${BASE}-gitpanel-section` },
 				h("div", { className: `${BASE}-gitpanel-subtitle` }, t("merge.title")),
-				h("label", { className: `${BASE}-field` },
-					h("span", { className: `${BASE}-field-label` }, t("merge.source")),
-					h("select", { className: `${BASE}-select`, value: mergeSource, onChange: (event) => setMergeSource(event.target.value) },
-						h("option", { value: "" }, t("merge.targetPending")),
-						...branches.filter((name) => name !== mergeTarget).map((name) => h("option", { key: name, value: name }, name)))),
-				h("label", { className: `${BASE}-field` },
-					h("span", { className: `${BASE}-field-label` }, t("merge.target")),
-					h("select", { className: `${BASE}-select`, value: mergeTarget, onChange: (event) => setMergeTarget(event.target.value) },
-						h("option", { value: "" }, t("merge.targetPending")),
-						...branches.filter((name) => name !== mergeSource).map((name) => h("option", { key: name, value: name }, name)))),
-				h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doMerge }, t("merge.submit")));
+				h("div", { className: `${BASE}-merge-flow` },
+					mergeSourceCard,
+					h("div", { className: `${BASE}-merge-arrow-wrap` }, h(ArrowIcon)),
+					mergeTargetCard),
+				h("button", { type: "button", className: `${BASE}-gitpanel-button ${BASE}-gitpanel-button-primary ${BASE}-merge-button`, disabled: busy, onClick: doMerge }, t("merge.submit")));
 			// stash content
 			const stashFileRows = (changes?.files ?? []).map((file) => h("div", { key: file.path, className: `${BASE}-gitpanel-row` },
 				h("input", {
@@ -2148,13 +2181,13 @@ window.__ModuleLoader__.load({
 				? h("div", { className: `${BASE}-empty` }, t("stash.empty"))
 				: h("div", null, (stashRows ?? []).map((row) => h("div", { key: row.ref, className: `${BASE}-gitpanel-row` },
 					h("span", { className: `${BASE}-gitpanel-row-name` }, row.message || row.ref),
-					h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => doStashApply(row.ref) }, t("stash.apply")),
-					h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => doStashDrop(row.ref) }, t("stash.drop")))));
+					h("button", { type: "button", className: `${BASE}-gitpanel-button`, disabled: busy, onClick: () => doStashApply(row.ref) }, t("stash.apply")),
+					h("button", { type: "button", className: `${BASE}-gitpanel-button`, disabled: busy, onClick: () => doStashDrop(row.ref) }, t("stash.drop")))));
 			const stashContent = h("div", { className: `${BASE}-gitpanel-section` },
 				h("div", { className: `${BASE}-gitpanel-subtitle` }, t("stash.title")),
 				stashMode === "list" ? h(React.Fragment, null,
 					stashList,
-					h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => setStashMode("save") }, t("stash.submit")))
+					h("button", { type: "button", className: `${BASE}-gitpanel-button`, disabled: busy, onClick: () => setStashMode("save") }, t("stash.submit")))
 					: h(React.Fragment, null,
 						stashFileRows.length === 0 ? h("div", { className: `${BASE}-empty` }, t("push.clean")) : stashFileRows,
 						h("input", {
@@ -2165,8 +2198,8 @@ window.__ModuleLoader__.load({
 							onChange: (event) => setStashMessage(event.target.value)
 						}),
 						h("div", { className: `${BASE}-gitpanel-actions` },
-							h("button", { type: "button", className: `${BASE}-button`, disabled: busy, onClick: () => setStashMode("list") }, t("create.cancel")),
-							h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: doStash }, t("stash.submit")))));
+							h("button", { type: "button", className: `${BASE}-gitpanel-button`, disabled: busy, onClick: () => setStashMode("list") }, t("create.cancel")),
+							h("button", { type: "button", className: `${BASE}-gitpanel-button ${BASE}-gitpanel-button-primary`, disabled: busy, onClick: doStash }, t("stash.submit")))));
 			// diff content
 			const diffContent = diffFiles === void 0
 				? h("div", { className: `${BASE}-empty` }, t("diff.loading"))
@@ -2186,7 +2219,7 @@ window.__ModuleLoader__.load({
 					h("span", { className: `${BASE}-gitpanel-branch` }, status?.current ?? "—"),
 					h("button", {
 						type: "button",
-						className: `${BASE}-button ${BASE}-gitpanel-refresh`,
+						className: `${BASE}-gitpanel-button ${BASE}-gitpanel-refresh`,
 						disabled: busy,
 						onClick: () => { loadStatus(); loadChanges(); loadStash(); if (activeTab === "diff") loadDiff(); }
 					}, t("gitPanel.refresh"))),
@@ -2196,8 +2229,8 @@ window.__ModuleLoader__.load({
 				switching !== void 0 ? h("div", { className: `${BASE}-confirm` },
 					h("div", null, t("confirm.dirty", { count: status?.dirtyLines ?? 0 })),
 					h("div", { className: `${BASE}-gitpanel-actions` },
-						h("button", { type: "button", className: `${BASE}-button`, onClick: () => setSwitching(void 0) }, t("confirm.cancel")),
-						h("button", { type: "button", className: `${BASE}-button ${BASE}-button-primary`, disabled: busy, onClick: confirmSwitch }, t("confirm.ok")))) : null,
+						h("button", { type: "button", className: `${BASE}-gitpanel-button`, onClick: () => setSwitching(void 0) }, t("confirm.cancel")),
+						h("button", { type: "button", className: `${BASE}-gitpanel-button ${BASE}-gitpanel-button-primary`, disabled: busy, onClick: confirmSwitch }, t("confirm.ok")))) : null,
 				h("div", { className: `${BASE}-gitpanel-body` }, currentContent));
 		};
 
