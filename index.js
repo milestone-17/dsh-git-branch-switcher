@@ -1,7 +1,7 @@
 /**
  * Host half of the Git branch switcher plugin.
  *
- * Exposes one Typert Remote service `branchSwitcher` with twelve direct methods:
+ * Exposes one Typert Remote service `branchSwitcher` with fourteen direct methods:
  * - `status`: resolve the session's effective working directory, detect the
  *   enclosing git repository, and collect the current branch, local branches,
  *   and remote-tracking branches.
@@ -13,6 +13,10 @@
  *   onto the new branch right away, recording the pull source in local config.
  * - `changes`: list the working-tree changes with their kind and the number of
  *   unpushed commits on the current branch.
+ * - `snapshot`: capture the current working tree as a git tree object for later
+ *   comparison.
+ * - `diff`: compare two snapshots (or a snapshot against HEAD) and return the
+ *   file list and unified diff patch.
  * - `push`: stage a chosen subset of changes, commit them with a supplied
  *   message, and push to the upstream remote branch, establishing it on the way.
  * - `merge`: merge a source branch into a target branch and restore the branch
@@ -30,6 +34,9 @@
  * shell is involved and the child inherits no harness credential environment.
  */
 import { RemoteError, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 /** Prototype descriptor key the Gateway reads to discover Remote methods. */
 const REMOTE_METHOD_DESCRIPTOR = "@deepseek-ai/dsh-typert-protocol/remote-methods";
@@ -132,6 +139,31 @@ async function runGit(ctx, cwd, args, signal) {
 	};
 }
 
+/** One bounded, shell-free git invocation with a custom environment. */
+async function runGitEnv(ctx, cwd, args, env, signal) {
+	const subprocess = ctx.subprocess;
+	let git;
+	try {
+		git = await subprocess.resolveExecutable("git", undefined, signal);
+	} catch (error) {
+		throw new RemoteError("branchSwitcher/git-missing", `git executable unavailable: ${String(error?.message ?? error)}`, {});
+	}
+	const handle = subprocess.spawn({
+		argv: [git, ...args],
+		cwd,
+		env,
+		stdio: { stdout: { maxBytes: MAX_GIT_OUTPUT_BYTES }, stderr: { maxBytes: MAX_GIT_OUTPUT_BYTES } },
+		graceMs: 1000,
+		signal
+	});
+	const outcome = await handle.done;
+	return {
+		exitCode: outcome.exitCode,
+		stdout: handle.collected.stdout.readFrom(0).text,
+		stderr: handle.collected.stderr.readFrom(0).text
+	};
+}
+
 export default class BranchSwitcherService extends TypertRemoteService {
 	static inject = ["subprocess", "sessionController", "workingDirectory"];
 
@@ -142,6 +174,8 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		this.statusCache = new Map();
 		/** @type {Map<string, {at: number, value: string}>} session -> repository root cache, skipping agent resolution on the hot path. */
 		this.toplevelCache = new Map();
+		/** @type {Map<string, Array<{id: string, at: number, tree: string, head: string}>>} session -> rolling snapshot history for diff view. */
+		this.snapshots = new Map();
 	}
 
 	/**
@@ -378,6 +412,77 @@ export default class BranchSwitcherService extends TypertRemoteService {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Capture a snapshot of the current working tree as a git tree object.
+	 * The snapshot id can later be passed to `diff` to compare two states.
+	 * @param request - Request object carrying the session identity and an optional label.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns The snapshot id and timestamp.
+	 */
+	async snapshot(request, signal) {
+		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
+		const headResult = await runGit(this.ctx, toplevel, ["rev-parse", "HEAD"], signal);
+		const head = headResult.exitCode === 0 ? headResult.stdout.trim() : "HEAD";
+		const tmpIndex = path.join(os.tmpdir(), `dsh-gbs-${request.sessionId.replace(/[^a-z0-9]/giu, "-")}-${Date.now()}.index`);
+		try {
+			await runGitEnv(this.ctx, toplevel, ["read-tree", head], { GIT_INDEX_FILE: tmpIndex }, signal);
+			await runGitEnv(this.ctx, toplevel, ["add", "--all"], { GIT_INDEX_FILE: tmpIndex }, signal);
+			const treeResult = await runGitEnv(this.ctx, toplevel, ["write-tree"], { GIT_INDEX_FILE: tmpIndex }, signal);
+			if (treeResult.exitCode !== 0) {
+				throw new RemoteError("branchSwitcher/snapshot-failed", gitMessage(treeResult, "git write-tree failed"), {});
+			}
+			const tree = treeResult.stdout.trim();
+			const id = `${tree}:${head}`;
+			const list = this.snapshots.get(request.sessionId) ?? [];
+			list.push({ id, at: Date.now(), tree, head, label: request.label });
+			// Keep the last 32 snapshots per session to bound memory.
+			while (list.length > 32) list.shift();
+			this.snapshots.set(request.sessionId, list);
+			return { snapshotId: id, at: list[list.length - 1].at };
+		} finally {
+			await fs.unlink(tmpIndex).catch(() => {});
+		}
+	}
+
+	/**
+	 * Compute a diff between two snapshots or between a snapshot and HEAD.
+	 * @param request - Request object carrying the session identity, from id, and to id.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns File list with change kinds and the unified diff patch.
+	 */
+	async diff(request, signal) {
+		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
+		const resolveTree = (id) => {
+			if (id === "HEAD") return "HEAD";
+			if (typeof id !== "string" || id.length === 0) {
+				throw new RemoteError("branchSwitcher/invalid-snapshot", "snapshot id must be a non-empty string or HEAD", {});
+			}
+			// Snapshot ids are stored as "tree:head"; the tree is the diff operand.
+			const colon = id.indexOf(":");
+			return colon >= 0 ? id.slice(0, colon) : id;
+		};
+		const fromTree = resolveTree(request.from);
+		const toTree = resolveTree(request.to);
+		const [nameStatus, patch] = await Promise.all([
+			runGit(this.ctx, toplevel, ["diff", "--name-status", fromTree, toTree], signal),
+			runGit(this.ctx, toplevel, ["diff", fromTree, toTree], signal)
+		]);
+		if (nameStatus.exitCode !== 0) {
+			throw new RemoteError("branchSwitcher/diff-failed", gitMessage(nameStatus, "git diff failed"), {});
+		}
+		const files = [];
+		for (const line of nameStatus.stdout.split(/\r?\n/u)) {
+			if (line.trim().length === 0) continue;
+			const parts = line.split("\t");
+			const status = parts[0];
+			const kind = status === "A" ? "added" : status === "D" ? "deleted" : status.startsWith("R") ? "renamed" : "modified";
+			const entry = { kind, path: parts[1] };
+			if (kind === "renamed" && parts.length > 2) entry.previousPath = parts[2];
+			files.push(entry);
+		}
+		return { files, patch: patch.exitCode === 0 ? patch.stdout : "" };
 	}
 
 	/**
@@ -970,6 +1075,8 @@ markRemote(BranchSwitcherService.prototype, "checkout");
 markRemote(BranchSwitcherService.prototype, "fetch");
 markRemote(BranchSwitcherService.prototype, "create");
 markRemote(BranchSwitcherService.prototype, "changes");
+markRemote(BranchSwitcherService.prototype, "snapshot");
+markRemote(BranchSwitcherService.prototype, "diff");
 markRemote(BranchSwitcherService.prototype, "push");
 markRemote(BranchSwitcherService.prototype, "merge");
 markRemote(BranchSwitcherService.prototype, "mergeAbort");

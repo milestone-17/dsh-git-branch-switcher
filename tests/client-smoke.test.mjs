@@ -325,6 +325,8 @@ const scope = {
 			fetch: async () => ({ ok: true, value: { repository: true, fetched: true, output: "synced" } }),
 			create: async () => ({ ok: true, value: { repository: true, created: true, createdBranch: "feature/demo", current: "feature/demo" } }),
 			changes: async () => ({ ok: true, value: { repository: true, files: [] } }),
+			snapshot: async () => ({ ok: true, value: { snapshotId: "tree:HEAD", at: Date.now() } }),
+			diff: async () => ({ ok: true, value: { files: [{ path: "a.txt", kind: "modified" }], patch: "@@ -1 +1 @@\n-old\n+new" } }),
 			stash: async () => ({ ok: true, value: { stashed: true, ref: "stash@{0}" } }),
 			stashApply: async () => ({ ok: true, value: { applied: true, popped: true } }),
 			stashDrop: async () => ({ ok: true, value: { dropped: true } })
@@ -423,6 +425,8 @@ function mountChip(options = {}) {
 		}),
 		push: async () => ({ pushed: true, branch: "main", upstream: "origin/main" }),
 		merge: async () => ({ merged: true, mode: "true", restoredTo: "main" }),
+		snapshot: async () => ({ snapshotId: "tree:HEAD", at: Date.now() }),
+		diff: async () => ({ files: [{ path: "a.txt", kind: "modified" }], patch: "@@ -1 +1 @@\n-old\n+new" }),
 		stash: async () => ({ stashed: true, ref: "stash@{0}" }),
 		...(options.responses ?? {})
 	};

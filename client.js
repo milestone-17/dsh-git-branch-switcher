@@ -905,6 +905,9 @@ window.__ModuleLoader__.load({
 			"menu.createHint": "Create a branch and switch to it right away.",
 			"menu.push": "Push",
 			"menu.merge": "Merge",
+			"menu.diff": "Diff",
+			"panel.dock": "Dock to side panel",
+			"panel.undock": "Back to popup",
 			"create.title": "New branch",
 			"create.name": "Branch name",
 			"create.namePlaceholder": "feature/my-branch",
@@ -973,6 +976,12 @@ window.__ModuleLoader__.load({
 			"stash.droppedAll": "All stash entries cleared.",
 			"stash.confirmDirty": "The working tree has {count} uncommitted change(s). Applying may conflict with them.",
 			"stash.files": "{count} file(s)",
+			"diff.title": "Diff",
+			"diff.hint": "Compare the working tree against HEAD or a recent baseline.",
+			"diff.scopeAll": "All changes",
+			"diff.scopeRecent": "Recent baseline",
+			"diff.loading": "Loading diff…",
+			"diff.empty": "No changes to show.",
 			"kind.added": "added",
 			"kind.modified": "modified",
 			"kind.deleted": "deleted",
@@ -1007,6 +1016,9 @@ window.__ModuleLoader__.load({
 			"menu.createHint": "创建分支并立即切换过去。",
 			"menu.push": "推送",
 			"menu.merge": "合并",
+			"menu.diff": "查看变更",
+			"panel.dock": "停靠到侧栏",
+			"panel.undock": "回到弹窗",
 			"create.title": "新建分支",
 			"create.name": "分支名称",
 			"create.namePlaceholder": "feature/my-branch",
@@ -1075,6 +1087,12 @@ window.__ModuleLoader__.load({
 			"stash.droppedAll": "已清空全部暂存。",
 			"stash.confirmDirty": "工作区有 {count} 处未提交改动，恢复暂存可能与它们冲突。",
 			"stash.files": "{count} 个文件",
+			"diff.title": "查看变更",
+			"diff.hint": "对比工作区与 HEAD，或最近的基线快照。",
+			"diff.scopeAll": "全部变更",
+			"diff.scopeRecent": "最近基线",
+			"diff.loading": "正在加载 diff…",
+			"diff.empty": "没有可显示的变更。",
 			"kind.added": "新增",
 			"kind.modified": "修改",
 			"kind.deleted": "删除",
@@ -1210,6 +1228,21 @@ window.__ModuleLoader__.load({
 .${BASE}-stash-actions{display:flex;gap:6px;margin-top:7px;justify-content:flex-end}
 .${BASE}-notice-line{margin-top:6px;padding:7px 10px;border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 .${BASE}-error{margin-top:6px;color:var(--dsw-alias-state-error-primary,#d33);font-size:11.5px;line-height:1.5;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
+.${BASE}-menu-panel{position:fixed;right:12px;top:84px;width:380px;max-height:calc(100vh - 108px);box-shadow:0 12px 40px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.08)}
+.${BASE}-diff-scope{margin-bottom:4px}
+.${BASE}-diff-layout{display:flex;gap:10px;max-height:420px;overflow:hidden}
+.${BASE}-diff-files{flex:0 0 140px;display:flex;flex-direction:column;gap:1px;overflow:auto;border-right:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));padding-right:6px}
+.${BASE}-diff-body{flex:1 1 auto;overflow:auto;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.04));border-radius:var(--${BASE}-r-item);padding:8px}
+.${BASE}-diff-hunk{margin:0;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--dsw-alias-label-secondary,#888)}
+.${BASE}-file-row{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:var(--${BASE}-r-item);cursor:pointer;transition:background .12s var(--${BASE}-ease)}
+.${BASE}-file-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
+.${BASE}-file-row-selected{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.13))}
+.${BASE}-file-kind{flex:0 0 auto;width:18px;text-align:center;padding:1px 0;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase}
+.${BASE}-file-kind-added{background:#d1fae5;color:#065f46}
+.${BASE}-file-kind-modified{background:#dbeafe;color:#1e40af}
+.${BASE}-file-kind-deleted{background:#fee2e2;color:#991b1b}
+.${BASE}-file-kind-renamed{background:#fef3c7;color:#92400e}
+.${BASE}-file-path{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px}
 `;
 		const insertStyles = () => {
 			if (typeof document === "undefined") return;
@@ -1362,6 +1395,29 @@ window.__ModuleLoader__.load({
 			"stroke-linecap": "round",
 			"stroke-linejoin": "round"
 		}));
+		const PanelIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", { d: "M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3Zm5 0v10", stroke: "currentColor", "stroke-width": "1.5" }));
+		const PopupIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		}, h("path", { d: "M3 5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5Zm7-3v3", stroke: "currentColor", "stroke-width": "1.5" }));
+		const DiffIcon = () => h("svg", {
+			width: 14,
+			height: 14,
+			viewBox: "0 0 16 16",
+			fill: "none",
+			"aria-hidden": "true"
+		},
+			h("path", { d: "M4 3v10M2 5l2-2 2 2", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round", "stroke-linejoin": "round" }),
+			h("path", { d: "M12 3v10M10 11l2 2 2-2", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round", "stroke-linejoin": "round" }));
 		/**
 		 * A "source → target" strip naming the direction of the operation.
 		 * @param props - The `from` and `to` branch names plus an optional trailing note.
@@ -1430,6 +1486,11 @@ window.__ModuleLoader__.load({
 			const [stashUntracked, setStashUntracked] = React.useState(false);
 			const [stashRows, setStashRows] = React.useState(void 0);
 			const [stashMode, setStashMode] = React.useState("save");
+			const [diffScope, setDiffScope] = React.useState("all");
+			const [diffFiles, setDiffFiles] = React.useState(void 0);
+			const [diffPatch, setDiffPatch] = React.useState("");
+			const [diffSelected, setDiffSelected] = React.useState(void 0);
+			const [snapshots, setSnapshots] = React.useState([]);
 			const [hintDismissed, setHintDismissed] = React.useState(() => {
 				try {
 					return localStorage.getItem("dsh-gbs-hint") === "1";
@@ -1442,6 +1503,22 @@ window.__ModuleLoader__.load({
 				try {
 					localStorage.setItem("dsh-gbs-hint", "1");
 				} catch {}
+			}, []);
+			const [panelMode, setPanelMode] = React.useState(() => {
+				try {
+					return localStorage.getItem("dsh-gbs-panel-mode") === "1";
+				} catch {
+					return false;
+				}
+			});
+			const togglePanelMode = React.useCallback(() => {
+				setPanelMode((prev) => {
+					const next = !prev;
+					try {
+						localStorage.setItem("dsh-gbs-panel-mode", next ? "1" : "0");
+					} catch {}
+					return next;
+				});
 			}, []);
 			const rootRef = React.useRef(void 0);
 			const triggerRef = React.useRef(void 0);
@@ -1483,6 +1560,44 @@ window.__ModuleLoader__.load({
 				changesCache.set(sessionId, { at: Date.now(), value: result, inferredFor: inferTargetFor });
 				return result;
 			}, [call, sessionId]);
+			/**
+			 * Capture a working-tree snapshot for this session and keep the
+			 * local list in sync with the Host's rolling history.
+			 */
+			const recordSnapshot = React.useCallback(async (label) => {
+				try {
+					const shot = await call("snapshot", { sessionId, label });
+					setSnapshots((prev) => {
+						const next = [...prev, { id: shot.snapshotId, at: shot.at, label }];
+						return next.slice(-8);
+					});
+					return shot.snapshotId;
+				} catch (cause) {
+					console.warn("[git-branch-switcher] snapshot failed", cause);
+					return void 0;
+				}
+			}, [call, sessionId]);
+			/**
+			 * Load a diff for the selected scope. "all" compares HEAD to the
+			 * current working tree; a snapshot id compares that baseline to now.
+			 */
+			const loadDiff = React.useCallback(async (scope) => {
+				setDiffFiles(void 0);
+				setDiffPatch("");
+				setDiffSelected(void 0);
+				try {
+					const from = scope === "all" ? "HEAD" : scope;
+					const current = scope === "all" ? "HEAD" : await recordSnapshot("diff current");
+					if (current === void 0) return;
+					const result = await call("diff", { sessionId, from, to: current });
+					setDiffFiles(result.files);
+					setDiffPatch(result.patch);
+					if (result.files.length > 0) setDiffSelected(result.files[0].path);
+				} catch (cause) {
+					console.warn("[git-branch-switcher] diff failed", cause);
+					setDiffFiles([]);
+				}
+			}, [call, sessionId, recordSnapshot]);
 			/**
 			 * Fetch the change snapshot in the background while the menu is
 			 * open, so the push and stash panels show their list right away.
@@ -1746,6 +1861,7 @@ window.__ModuleLoader__.load({
 					setStashFiles([]);
 					changesCache.delete(sessionId);
 					await refresh();
+					recordSnapshot("after stash");
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
 					if (cause?.code === "branchSwitcher/nothing-stashed") setError(t("stash.nothing"));
@@ -1768,6 +1884,7 @@ window.__ModuleLoader__.load({
 						setNotice(pop === true ? t("stash.appliedPopped", { ref }) : t("stash.applied", { ref }));
 						changesCache.delete(sessionId);
 						await refresh();
+						recordSnapshot("after stash apply");
 					}
 				} catch (cause) {
 					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
@@ -1807,6 +1924,7 @@ window.__ModuleLoader__.load({
 					// The tree changed, so the shared snapshot is stale.
 					changesCache.delete(sessionId);
 					applySnapshot(await readChanges());
+					recordSnapshot("after push");
 				} catch (cause) {
 					const message = String(cause?.message ?? cause);
 					if (cause?.code === "branchSwitcher/no-remote") setError(t("push.noRemote"));
@@ -1850,6 +1968,7 @@ window.__ModuleLoader__.load({
 						setMode("list");
 						changesCache.delete(sessionId);
 						await refresh();
+						recordSnapshot("after merge");
 					}
 				} catch (cause) {
 					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
@@ -1868,6 +1987,7 @@ window.__ModuleLoader__.load({
 					setMode("list");
 					changesCache.delete(sessionId);
 					await refresh();
+					recordSnapshot("after merge abort");
 				} catch (cause) {
 					setError(t("error.failed", { message: String(cause?.message ?? cause) }));
 				} finally {
@@ -2018,7 +2138,14 @@ window.__ModuleLoader__.load({
 						title: fetching ? t("menu.fetching") : t("menu.fetch"),
 						"aria-label": fetching ? t("menu.fetching") : t("menu.fetch"),
 						onClick: fetchRemotes
-					}, h(SyncIcon, null))),
+					}, h(SyncIcon, null)),
+					h("button", {
+						type: "button",
+						className: `${BASE}-icon-button`,
+						title: panelMode ? t("panel.undock") : t("panel.dock"),
+						"aria-label": panelMode ? t("panel.undock") : t("panel.dock"),
+						onClick: togglePanelMode
+					}, panelMode ? h(PopupIcon, null) : h(PanelIcon, null))),
 				h("div", { className: `${BASE}-list` }, branchRows, remoteBranchRows),
 				h("div", { className: `${BASE}-footer` },
 					h("button", {
@@ -2055,7 +2182,14 @@ window.__ModuleLoader__.load({
 						role: "menuitem",
 						disabled: busy,
 						onClick: loadStashList
-					}, h("span", { className: `${BASE}-row-mark` }, h(StashIcon, null)), h("span", { className: `${BASE}-row-name` }, t("stash.listTitle")))));
+					}, h("span", { className: `${BASE}-row-mark` }, h(StashIcon, null)), h("span", { className: `${BASE}-row-name` }, t("stash.listTitle"))),
+					h("button", {
+						type: "button",
+						className: `${BASE}-row ${BASE}-row-new`,
+						role: "menuitem",
+						disabled: busy,
+						onClick: () => { setMode("diff"); loadDiff("all"); recordSnapshot("diff baseline"); }
+					}, h("span", { className: `${BASE}-row-mark` }, h(DiffIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.diff")))));
 			const createPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("create.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("menu.createHint")),
@@ -2355,19 +2489,60 @@ window.__ModuleLoader__.load({
 						onClick: () => doStashDrop("", true)
 					}, t("stash.dropAll")) : null));
 			const stashPanel = stashMode === "list" ? stashListPanel : stashSavePanel;
+			const diffFileRows = (diffFiles ?? []).map((row) => h("div", {
+				key: row.path,
+				className: `${BASE}-file-row ${diffSelected === row.path ? `${BASE}-file-row-selected` : ""}`,
+				onClick: () => setDiffSelected(row.path)
+			},
+				h("span", { className: `${BASE}-file-kind ${BASE}-file-kind-${row.kind}` }, row.kind[0].toUpperCase()),
+				h("span", { className: `${BASE}-file-path`, title: row.path }, row.path)));
+			const diffHunks = diffPatch.split(/(?=^@@\s+[-+][0-9]+)/mu).map((hunk, index) => h("pre", {
+				key: index,
+				className: `${BASE}-diff-hunk`
+			}, hunk));
+			const diffPanel = h("div", { className: `${BASE}-panel` },
+				h("div", { className: `${BASE}-panel-title` }, t("diff.title")),
+				h("div", { className: `${BASE}-panel-hint` }, t("diff.hint")),
+				h("div", { className: `${BASE}-diff-scope` },
+					h("select", {
+						className: `${BASE}-select`,
+						value: diffScope,
+						onChange: (event) => {
+							setDiffScope(event.target.value);
+							loadDiff(event.target.value);
+						}
+					},
+						h("option", { value: "all" }, t("diff.scopeAll")),
+						...(snapshots.length > 0 ? [h("option", { value: snapshots[snapshots.length - 1].id, key: snapshots[snapshots.length - 1].id }, t("diff.scopeRecent"))] : []))),
+				diffFiles === void 0
+					? h("div", { className: `${BASE}-empty` }, t("diff.loading"))
+					: diffFiles.length === 0
+						? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
+						: h("div", { className: `${BASE}-diff-layout` },
+							h("div", { className: `${BASE}-diff-files` }, diffFileRows),
+							h("div", { className: `${BASE}-diff-body` }, diffHunks)),
+				h("div", { className: `${BASE}-panel-actions` },
+					h("button", {
+						type: "button",
+						className: `${BASE}-button`,
+						onClick: () => setMode("list")
+					}, t("create.cancel"))));
 			const menuContent = open ? h("div", {
-				className: `${BASE}-menu ${BASE}-root`,
+				className: `${BASE}-menu ${BASE}-root ${panelMode ? `${BASE}-menu-panel` : ""}`,
 				ref: menuRef,
 				role: "menu",
-				style: position === void 0
-					? { visibility: "hidden" }
-					: { left: `${position.left}px`, top: `${position.top}px`, maxHeight: `${position.maxHeight}px` }
+				style: panelMode
+					? { position: "fixed", right: "12px", top: `${frameTopReserve()}px`, width: "380px", maxHeight: `calc(100vh - ${frameTopReserve() + 24}px)` }
+					: position === void 0
+						? { visibility: "hidden" }
+						: { left: `${position.left}px`, top: `${position.top}px`, maxHeight: `${position.maxHeight}px` }
 			},
 				mode === "create" ? createPanel
 					: mode === "push" ? pushPanel
 						: mode === "merge" ? mergePanel
 							: mode === "stash" ? stashPanel
-								: listPanel,
+								: mode === "diff" ? diffPanel
+									: listPanel,
 				noticeLine,
 				confirmNotice,
 				errorNotice) : null;

@@ -442,6 +442,26 @@ try {
 	rmSync(join(repository, "drop.txt"), { force: true });
 	rmSync(join(repository, "untracked-stash.txt"), { force: true });
 
+	// --- snapshot + diff: capture working tree states and compare them ---
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	const before = await service.snapshot({ sessionId: "session-1" });
+	assert.ok(typeof before.snapshotId === "string" && before.snapshotId.length > 0, "snapshot returns an id");
+	assert.equal(typeof before.at, "number", "snapshot returns a timestamp");
+	writeFileSync(join(repository, "snapshot-demo.txt"), "demo content\n");
+	const after = await service.snapshot({ sessionId: "session-1", label: "after change" });
+	assert.ok(after.snapshotId !== before.snapshotId, "second snapshot has a different id");
+	const headDiff = await service.diff({ sessionId: "session-1", from: "HEAD", to: after.snapshotId });
+	assert.ok(headDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "added"), "diff against HEAD finds the new file");
+	assert.ok(headDiff.patch.includes("demo content"), "diff patch contains the new content");
+	const snapshotDiff = await service.diff({ sessionId: "session-1", from: before.snapshotId, to: after.snapshotId });
+	assert.ok(snapshotDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "added"), "diff between snapshots finds the new file");
+	await assert.rejects(
+		() => service.diff({ sessionId: "session-1", from: "", to: after.snapshotId }),
+		(error) => error?.code === "branchSwitcher/invalid-snapshot",
+		"empty snapshot id is rejected"
+	);
+	rmSync(join(repository, "snapshot-demo.txt"), { force: true });
+
 	console.log("host smoke test: ok");
 } finally {
 	rmSync(repository, { recursive: true, force: true });

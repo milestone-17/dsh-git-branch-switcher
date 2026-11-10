@@ -1,8 +1,8 @@
 # Git Branch Switcher for DeepSeek Harness
 
-**Keep your git workflow inside the chat.** A composer chip shows the current branch at a glance; one popup lets you switch branches, fetch remotes, commit & push, merge, and stash — without leaving DeepSeek Harness.
+**Keep your git workflow inside the chat.** A composer chip shows the current branch at a glance; one popup (or docked side panel) lets you switch branches, fetch remotes, commit & push, merge, stash, and inspect diffs — without leaving DeepSeek Harness.
 
-**让 git 操作不离开 DSH 聊天窗口。**输入框工具行的胶囊实时显示当前分支，点一下就能切换/新建分支、同步远端、勾选改动提交推送、合并分支、暂存与恢复 —— 不用切到 IDE 或终端，思路不断。
+**让 git 操作不离开 DSH 聊天窗口。**输入框工具行的胶囊实时显示当前分支，点一下就能切换/新建分支、同步远端、勾选改动提交推送、合并分支、暂存与恢复、查看 diff —— 不用切到 IDE 或终端，思路不断。面板还可停靠到右侧侧栏，腾出更大空间。
 
 [![release](https://img.shields.io/github/v/release/milestone-17/dsh-git-branch-switcher?label=release)](https://github.com/milestone-17/dsh-git-branch-switcher/releases)
 [![license](https://img.shields.io/github/license/milestone-17/dsh-git-branch-switcher?label=license)](./LICENSE)
@@ -15,7 +15,7 @@
 |---|---|---|---|
 | ![分支切换菜单](./docs/screenshot.png) | ![新建分支](./docs/screenshot-create.png) | ![同步远端分支](./docs/screenshot-fetch.png) | ![推送改动](./docs/screenshot-push.png) |
 
-> 截图来自 v0.6.1：弹层停靠在输入框上方，推送面板显示结果摘要，改动列表秒开。
+> 截图来自 v0.6.1：弹层停靠在输入框上方，推送面板显示结果摘要，改动列表秒开。v0.7.0 新增侧栏模式与 diff 视图截图将在发布前补齐。
 
 ## 适合谁 / Who is this for
 
@@ -53,6 +53,8 @@
 | 分支合并 | 「⇆ 合并」：来源/目标双下拉，目标默认推断拉取来源（记录源 → 上游 → merge-base → master/main）；冲突列文件 + 放弃出口；成功后回到原分支 |
 | 改动暂存与恢复 | 「≡ 暂存」：勾选子集（可含未跟踪文件）存成一条带描述的 stash；「暂存列表」：逐条查看文件清单，恢复（保留条目）或恢复并删除；工作区不干净时恢复前确认；可删单条或清空 |
 | 弹层贴合输入区 | 面板 portal 到页面根节点、停靠在输入卡片上方，按「卡片上沿 − 会话头部」限高并在面板内滚动；内容变高时自动重新定位 |
+| 侧栏模式 | 点击搜索栏右侧停靠按钮，面板切换为右侧固定侧栏；再次点击恢复为弹层；模式记入 `localStorage`，刷新后保持 |
+| 查看变更 / Diff | 「⇄ 查看变更」：选择「全部变更」（对比 HEAD）或「最近基线」（对比最近一次快照），文件列表按新增/修改/删除/重命名分类，点击文件查看统一 diff |
 | 来源→目标流向 | 推送面板显示「本地分支 → 上游」流向条（无上游时显示待定文案）；合并面板显示「来源 → 目标」流向条，两个下拉之间有朝下箭头 |
 | 改动列表秒开 | 菜单打开即后台预取改动快照，推送 / 暂存 / 合并面板共用；合并面板一次取数同时拿到列表与目标推断；推送或暂存写操作后快照自动作废 |
 | 安全确认 | 脏工作区切换/新建/合并/恢复暂存前确认；分支名白名单校验；pathspec 按字面量防路径注入 |
@@ -87,7 +89,7 @@ dsh plugin --profile desktop install git+https://gitclone.com/github.com/milesto
 dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz
 
 # 或钉住当前版本
-dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.6.1/dsh-git-branch-switcher-0.6.1.tgz
+dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.7.0/dsh-git-branch-switcher-0.7.0.tgz
 ```
 
 ### 方式三：市场索引
@@ -122,12 +124,14 @@ dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher
 
 ## 工作原理 / How it works
 
-- Host 半包（`index.js`）：`TypertRemoteService` 子类 `branchSwitcher`，八个 direct 方法：
+- Host 半包（`index.js`）：`TypertRemoteService` 子类 `branchSwitcher`，十四个 direct 方法：
   - `status`：解析会话工作目录 → `rev-parse --show-toplevel`，然后并行跑 `rev-parse --abbrev-ref HEAD`、一条合并 `refs/heads`+`refs/remotes` 的 `for-each-ref`、`status --porcelain`（冷启动共 3 次 git spawn）；结果按仓库根做 3 秒 TTL 缓存，切换对话瞬间回显，任何写操作（checkout/fetch/create/push/merge/mergeAbort/stash/stashApply/stashDrop）都会失效缓存。
   - `checkout`：本地分支直接 `git switch`；只有远端跟踪分支时 `git switch --track <remote>/<branch>` 自动建本地跟踪分支；工作区不干净或目标不存在时先返回确认请求（每次都实时 `status --porcelain`，不读缓存）。
   - `fetch`：`git fetch --all --prune`，随后返回刷新后的仓库状态与截断后的 git 输出。
   - `create`：`git switch -c <新分支> <源分支>`，源分支可以是本地分支，也可以是远端跟踪分支（解析成具体的 ref）；重名或源分支不存在时分别报 `branchSwitcher/branch-exists`、`branchSwitcher/base-missing`；工作区不干净时先返回确认请求；建分支后把源分支写入 `branch.<名>.dsh-base` 本地配置（只落 `.git/config`，不随 push 上传）。
   - `changes`：`status --porcelain -z` 解析成带类型的改动行（新增/修改/删除/重命名/未跟踪）+ `rev-list --count @{u}..HEAD` 未推送提交数 + 远端列表 + 合并中状态；带 `inferTargetFor` 时按「记录源 → 上游 → merge-base → master/main」推断合并目标。
+  - `snapshot`：用临时 `GIT_INDEX_FILE` 做 `read-tree HEAD` + `add --all` + `write-tree`，把当前工作树捕获为一个 git tree 对象；返回 `snapshotId`（格式 `tree:head`）与时间戳；每个会话保留最近 32 条快照。
+  - `diff`：接受 `from`/`to` 两个快照 id（或 `HEAD`），跑 `git diff --name-status` 与 `git diff`，返回文件变更列表（含类型）与统一 diff patch。
   - `push`：勾选文件用 `:(literal)` pathspec 逐个 `git add` → `commit -m` → 无上游时 `push -u origin HEAD` 否则 `git push`；无远端/无可提交内容/空提交信息分别报 `branchSwitcher/no-remote`、`branchSwitcher/nothing-staged`、`branchSwitcher/empty-message`；远端拒绝时报 `branchSwitcher/push-rejected`（不 force push）。
   - `merge`：记录原分支 → `switch 目标` → `merge 来源` → 成功 `switch` 回原分支并返回模式（fast-forward/true/up-to-date）；冲突时留在目标分支返回冲突文件清单；非冲突失败自动 `merge --abort` 并恢复原分支。
   - `mergeAbort`：检测到 `MERGE_HEAD` 才执行 `git merge --abort`；无合并中状态报 `branchSwitcher/not-merging`。
@@ -136,15 +140,15 @@ dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher
   - `stashApply`：`git stash apply|pop <ref>`；工作区不干净时先返回确认请求；冲突时返回冲突文件清单并保持现场（可自行解决或 `checkout` 脱身）。
   - `stashDrop`：`git stash drop <ref>` 删单条；`all: true` 时 `git stash clear` 清空。
   - 所有 git 调用经 `subprocess.spawn` 无 shell 执行，stdio 全程收集、1 MiB 上限。
-- Client 半包（`client.js`）：内联 `createTypertRemoteInfo` 声明全部十二个 direct 方法，`ctx.remote.$mount` 挂载后取 `remote.branchSwitcher` 命名空间调用；UI 注册到 `conversation.input.left`，样式全部使用 `--dsw-alias-*` 主题变量，跟随浅色/深色主题。胶囊按会话记忆上次状态，切回对话零等待渲染；输入行宽度不足时通过容器查询自动收成纯图标（与原生权限胶囊同一机制）。
+- Client 半包（`client.js`）：内联 `createTypertRemoteInfo` 声明全部十四个 direct 方法，`ctx.remote.$mount` 挂载后取 `remote.branchSwitcher` 命名空间调用；UI 注册到 `conversation.input.left`，样式全部使用 `--dsw-alias-*` 主题变量，跟随浅色/深色主题。胶囊按会话记忆上次状态，切回对话零等待渲染；输入行宽度不足时通过容器查询自动收成纯图标（与原生权限胶囊同一机制）。面板可切换为右侧固定侧栏，diff 面板从弹层/侧栏内打开。
 - 分支名经白名单校验，拒绝以 `-` 开头、含空白/控制字符、`..`、`~ ^ :` 结尾等可注入参数或引用的名称；推送的文件路径按字面量 pathspec 传递。
 
 ## 开发 / Development
 
 ```bash
 pnpm install
-node tests/host-smoke.test.mjs     # Host 半包：真实 git 仓库 + 本地裸库远端，覆盖状态/切换/脏树确认/fetch/远端分支跟踪/新建分支/勾选提交推送/合并三态/冲突放弃/来源推断/暂存恢复删除
-node tests/client-smoke.test.mjs   # Client 半包：模块装载、slot 注册、Remote 调用桥（含 create/changes/push/merge/mergeAbort/stash 系列）
+node tests/host-smoke.test.mjs     # Host 半包：真实 git 仓库 + 本地裸库远端，覆盖状态/切换/脏树确认/fetch/远端分支跟踪/新建分支/勾选提交推送/合并三态/冲突放弃/来源推断/暂存恢复删除/快照与 diff
+node tests/client-smoke.test.mjs   # Client 半包：模块装载、slot 注册、Remote 调用桥（含 create/changes/snapshot/diff/push/merge/mergeAbort/stash 系列）
 ```
 
 ## 隐私 / Privacy

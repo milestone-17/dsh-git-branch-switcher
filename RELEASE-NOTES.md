@@ -1,3 +1,34 @@
+# v0.7.0 — 侧栏模式 + 查看变更 / Diff 视图
+
+这一版解决两个长期痛点：**分支面板太窄** 和 **想看 AI 这一轮改了什么必须切到 IDE**。
+
+## 新能力 / New
+
+- **侧栏模式**：点击分支面板搜索栏右侧的停靠按钮，面板从输入框上方弹层切换为右侧固定侧栏，宽度更大、内容不再被压缩；再次点击恢复弹层。模式通过 `localStorage` 记住，刷新后保持。
+- **查看变更 / Diff 视图**：菜单底部新增「⇄ 查看变更」入口，打开后显示：
+  - 范围选择器：「全部变更」（工作区 vs HEAD）或「最近基线」（工作区 vs 最近一次自动/手动快照）。
+  - 文件列表：按新增、修改、删除、重命名分类，点击文件切换右侧 diff。
+  - 统一 diff：显示完整的 `@@` hunks，新增/删除行视觉区分。
+- **自动基线快照**：打开 diff 视图、完成推送/合并/暂存/恢复暂存/放弃合并后，Client 自动调用 Host 的 `snapshot` 方法记录当前工作树，为「最近基线」提供对比点；每个会话保留最近 32 条快照。
+
+## 实现 / Implementation
+
+- Host 新增 `branchSwitcher/snapshot` 与 `branchSwitcher/diff` 两个 direct 方法。
+- `snapshot` 使用临时 `GIT_INDEX_FILE` 捕获工作树为 git tree 对象，不污染原索引。
+- `diff` 支持 `HEAD` 与任意快照 id 的对比，返回文件列表与统一 diff patch。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.6.1 — 降低操作恐惧 + 首次安装引导 + 文案聚焦利益
 
 这一版针对“用户装了但不知道在哪”“点了推送/合并怕点错”做体验优化。
