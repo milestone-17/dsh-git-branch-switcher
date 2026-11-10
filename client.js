@@ -1360,12 +1360,23 @@ window.__ModuleLoader__.load({
 .${BASE}-stash-actions{display:flex;gap:6px;margin-top:7px;justify-content:flex-end}
 .${BASE}-notice-line{margin-top:6px;padding:7px 10px;border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06));color:var(--dsw-alias-label-tertiary,#999);font-size:11.5px;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
 .${BASE}-error{margin-top:6px;color:var(--dsw-alias-state-error-primary,#d33);font-size:11.5px;line-height:1.5;animation:${BASE}-panel-in .12s var(--${BASE}-ease)}
-.${BASE}-menu-panel{position:fixed;right:12px;top:84px;width:380px;max-height:calc(100vh - 108px);box-shadow:0 12px 40px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.08)}
-.${BASE}-diff-scope{margin-bottom:4px}
-.${BASE}-diff-layout{display:flex;gap:10px;max-height:420px;overflow:hidden}
-.${BASE}-diff-files{flex:0 0 140px;display:flex;flex-direction:column;gap:1px;overflow:auto;border-right:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));padding-right:6px}
-.${BASE}-diff-body{flex:1 1 auto;overflow:auto;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.04));border-radius:var(--${BASE}-r-item);padding:8px}
-.${BASE}-diff-hunk{margin:0;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--dsw-alias-label-secondary,#888)}
+.${BASE}-menu-panel{position:fixed;right:12px;top:84px;max-height:calc(100vh - 108px);box-shadow:0 12px 40px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.08)}
+.${BASE}-menu-diff{width:min(900px,calc(100vw - 24px))}
+.${BASE}-diff-scope{margin-bottom:8px}
+.${BASE}-diff-layout{display:flex;gap:0;max-height:calc(100vh - 260px);min-height:360px;overflow:hidden;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));border-radius:var(--${BASE}-r-item);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.04))}
+.${BASE}-diff-files{flex:0 0 220px;display:flex;flex-direction:column;gap:1px;overflow:auto;border-right:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));padding:6px}
+.${BASE}-diff-body{flex:1 1 auto;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.${BASE}-diff-file-header{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.06))}
+.${BASE}-diff-file-path{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px;color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-diff-file-stats{flex:0 0 auto;display:flex;gap:6px;font-size:11px;font-weight:600;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
+.${BASE}-diff-lines{flex:1 1 auto;overflow:auto;padding:8px 0;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px;line-height:1.6}
+.${BASE}-diff-line{padding:0 10px;white-space:pre}
+.${BASE}-diff-line:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.08))}
+.${BASE}-diff-line-added{background:rgba(34,197,94,.12);color:#166534}
+.${BASE}-diff-line-deleted{background:rgba(239,68,68,.12);color:#991b1b}
+.${BASE}-diff-line-meta{color:var(--dsw-alias-label-tertiary,#999)}
+.${BASE}-diff-line-header{color:var(--dsw-alias-label-secondary,#888)}
+.${BASE}-diff-line-content{display:inline-block;min-width:100%}
 .${BASE}-file-row{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:var(--${BASE}-r-item);cursor:pointer;transition:background .12s var(--${BASE}-ease)}
 .${BASE}-file-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
 .${BASE}-file-row-selected{background:var(--dsw-alias-interactive-bg-active,rgba(127,127,127,.13))}
@@ -1374,7 +1385,11 @@ window.__ModuleLoader__.load({
 .${BASE}-file-kind-modified{background:#dbeafe;color:#1e40af}
 .${BASE}-file-kind-deleted{background:#fee2e2;color:#991b1b}
 .${BASE}-file-kind-renamed{background:#fef3c7;color:#92400e}
+.${BASE}-file-kind-untracked{background:#f3e8ff;color:#6b21a8}
 .${BASE}-file-path{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px}
+.${BASE}-file-stats{flex:0 0 auto;display:flex;gap:4px;font-size:10px;font-weight:600;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
+.${BASE}-file-stat-added{color:#16a34a}
+.${BASE}-file-stat-deleted{color:#dc2626}
 `;
 		const insertStyles = () => {
 			if (typeof document === "undefined") return;
@@ -1718,6 +1733,7 @@ window.__ModuleLoader__.load({
 				setDiffFiles(void 0);
 				setDiffPatch("");
 				setDiffSelected(void 0);
+				setError(void 0);
 				try {
 					const from = scope === "all" ? "HEAD" : scope;
 					const to = scope === "all" ? "WORKTREE" : await recordSnapshot("diff current");
@@ -1733,6 +1749,48 @@ window.__ModuleLoader__.load({
 					setDiffFiles([]);
 				}
 			}, [call, sessionId, recordSnapshot, t]);
+			/**
+			 * Split a unified diff into per-file sections so the UI can show one
+			 * file at a time with stats. Untracked-file hunks synthesized by the
+			 * Host start with "diff --git" just like regular git output.
+			 * @param patch - Raw unified diff text.
+			 * @returns Array of file diff entries.
+			 */
+			const parsePatch = React.useCallback((patch) => {
+				if (patch.length === 0) return [];
+				const entries = [];
+				const lines = patch.split(/\r?\n/u);
+				let current = null;
+				let added = 0;
+				let deleted = 0;
+				for (const line of lines) {
+					if (line.startsWith("diff --git")) {
+						if (current !== null) {
+							current.added = added;
+							current.deleted = deleted;
+							entries.push(current);
+						}
+						const match = line.match(/^diff --git a\/(.+?) b\/(.+)$/u);
+						const path = match !== null ? match[2] : "";
+						current = { path, lines: [], added: 0, deleted: 0 };
+						added = 0;
+						deleted = 0;
+					} else if (current !== null) {
+						current.lines.push(line);
+						if (line.startsWith("+") && !line.startsWith("+++") && !line.startsWith("@@")) {
+							added += 1;
+						} else if (line.startsWith("-") && !line.startsWith("---") && !line.startsWith("@@")) {
+							deleted += 1;
+						}
+					}
+				}
+				if (current !== null) {
+					current.added = added;
+					current.deleted = deleted;
+					entries.push(current);
+				}
+				return entries;
+			}, []);
 			/**
 			 * Fetch the change snapshot in the background while the menu is
 			 * open, so the push and stash panels show their list right away.
@@ -2323,7 +2381,14 @@ window.__ModuleLoader__.load({
 						className: `${BASE}-row ${BASE}-row-new`,
 						role: "menuitem",
 						disabled: busy,
-						onClick: () => { setMode("diff"); loadDiff("all"); }
+						onClick: () => {
+							setMode("diff");
+							setPanelMode(true);
+							try {
+								localStorage.setItem("dsh-gbs-panel-mode", "1");
+							} catch {}
+							loadDiff("all");
+						}
 					}, h("span", { className: `${BASE}-row-mark` }, h(DiffIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.diff")))));
 			const createPanel = h("div", { className: `${BASE}-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("create.title")),
@@ -2624,18 +2689,41 @@ window.__ModuleLoader__.load({
 						onClick: () => doStashDrop("", true)
 					}, t("stash.dropAll")) : null));
 			const stashPanel = stashMode === "list" ? stashListPanel : stashSavePanel;
-			const diffFileRows = (diffFiles ?? []).map((row) => h("div", {
-				key: row.path,
-				className: `${BASE}-file-row ${diffSelected === row.path ? `${BASE}-file-row-selected` : ""}`,
-				onClick: () => setDiffSelected(row.path)
-			},
-				h("span", { className: `${BASE}-file-kind ${BASE}-file-kind-${row.kind}` }, row.kind[0].toUpperCase()),
-				h("span", { className: `${BASE}-file-path`, title: row.path }, row.path)));
-			const diffHunks = diffPatch.split(/(?=^@@\s+[-+][0-9]+)/mu).map((hunk, index) => h("pre", {
-				key: index,
-				className: `${BASE}-diff-hunk`
-			}, hunk));
-			const diffPanel = h("div", { className: `${BASE}-panel` },
+			const patchEntries = React.useMemo(() => parsePatch(diffPatch), [parsePatch, diffPatch]);
+			const selectedEntry = patchEntries.find((entry) => entry.path === diffSelected) ?? patchEntries[0] ?? null;
+			const diffFileRows = (diffFiles ?? []).map((row) => {
+				const entry = patchEntries.find((e) => e.path === row.path);
+				const added = entry?.added ?? 0;
+				const deleted = entry?.deleted ?? 0;
+				return h("div", {
+					key: row.path,
+					className: `${BASE}-file-row ${diffSelected === row.path ? `${BASE}-file-row-selected` : ""}`,
+					onClick: () => setDiffSelected(row.path)
+				},
+					h("span", { className: `${BASE}-file-kind ${BASE}-file-kind-${row.kind}` }, row.kind[0].toUpperCase()),
+					h("span", { className: `${BASE}-file-path`, title: row.path }, row.path),
+					h("span", { className: `${BASE}-file-stats` },
+						added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${added}`) : null,
+						deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${deleted}`) : null));
+			});
+			const renderDiffLine = (line, index) => {
+				let className = `${BASE}-diff-line`;
+				if (line.startsWith("+")) className += ` ${BASE}-diff-line-added`;
+				else if (line.startsWith("-")) className += ` ${BASE}-diff-line-deleted`;
+				else if (line.startsWith("@@")) className += ` ${BASE}-diff-line-meta`;
+				else if (line.startsWith("diff --git") || line.startsWith("index ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("new file") || line.startsWith("deleted file") || line.startsWith("similarity") || line.startsWith("rename")) className += ` ${BASE}-diff-line-header`;
+				return h("div", { key: index, className }, h("span", { className: `${BASE}-diff-line-content` }, line || " "));
+			};
+			const diffBody = selectedEntry === null
+				? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
+				: h("div", { className: `${BASE}-diff-body` },
+					h("div", { className: `${BASE}-diff-file-header` },
+						h("span", { className: `${BASE}-diff-file-path`, title: selectedEntry.path }, selectedEntry.path),
+						h("span", { className: `${BASE}-diff-file-stats` },
+							selectedEntry.added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${selectedEntry.added}`) : null,
+							selectedEntry.deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${selectedEntry.deleted}`) : null)),
+					h("div", { className: `${BASE}-diff-lines` }, selectedEntry.lines.map(renderDiffLine)));
+			const diffPanel = h("div", { className: `${BASE}-panel ${BASE}-diff-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("diff.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("diff.hint")),
 				h("div", { className: `${BASE}-diff-scope` },
@@ -2655,7 +2743,7 @@ window.__ModuleLoader__.load({
 						? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
 						: h("div", { className: `${BASE}-diff-layout` },
 							h("div", { className: `${BASE}-diff-files` }, diffFileRows),
-							h("div", { className: `${BASE}-diff-body` }, diffHunks)),
+							diffBody),
 				h("div", { className: `${BASE}-panel-actions` },
 					h("button", {
 						type: "button",
@@ -2663,11 +2751,11 @@ window.__ModuleLoader__.load({
 						onClick: () => setMode("list")
 					}, t("create.cancel"))));
 			const menuContent = open ? h("div", {
-				className: `${BASE}-menu ${BASE}-root ${panelMode ? `${BASE}-menu-panel` : ""}`,
+				className: `${BASE}-menu ${BASE}-root ${panelMode || mode === "diff" ? `${BASE}-menu-panel` : ""} ${mode === "diff" ? `${BASE}-menu-diff` : ""}`,
 				ref: menuRef,
 				role: "menu",
-				style: panelMode
-					? { position: "fixed", right: "12px", top: `${frameTopReserve()}px`, width: "380px", maxHeight: `calc(100vh - ${frameTopReserve() + 24}px)` }
+				style: panelMode || mode === "diff"
+					? { position: "fixed", right: "12px", top: `${frameTopReserve()}px`, width: mode === "diff" ? "min(900px, calc(100vw - 24px))" : "380px", maxHeight: `calc(100vh - ${frameTopReserve() + 24}px)` }
 					: position === void 0
 						? { visibility: "hidden" }
 						: { left: `${position.left}px`, top: `${position.top}px`, maxHeight: `${position.maxHeight}px` }

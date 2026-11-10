@@ -115,6 +115,15 @@ function createReactSurface() {
 			callbacks[index] = { fn, deps };
 			return fn;
 		},
+		useMemo: (fn, deps) => {
+			const index = cursor;
+			cursor += 1;
+			const previous = callbacks[index];
+			if (previous !== void 0 && sameDeps(previous.deps, deps)) return previous.value;
+			const value = fn();
+			callbacks[index] = { value, deps };
+			return value;
+		},
 		useEffect: (fn, deps) => {
 			const index = cursor;
 			cursor += 1;

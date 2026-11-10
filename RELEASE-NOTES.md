@@ -1,3 +1,25 @@
+# v0.7.5 — 重做 diff 面板：右侧大图、按文件查看、带 +N/-M 统计
+
+## 改进 / Improvements
+
+- **diff 面板改为右侧大面板**：点击「查看变更」后自动以固定右侧面板打开，宽度最大 900px，不再挤在分支弹出菜单里。
+- **按文件查看 diff**：左侧列出所有变更文件（含未跟踪文件），点击文件名右侧只显示该文件的 diff。
+- **文件级 +N/-M 统计**：每个文件后面显示新增/删除行数，与第二张图一致。
+- **语法高亮 diff 行**：新增行绿色背景、删除行红色背景、元信息（@@、diff header）灰色。
+- **未跟踪文件样式**：紫色「U」标签，与增删改重命名区分。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.4 — 修复 diff 面板报错「branchSwitcher[diff] is not a function」
 
 ## 修复 / Fixes
