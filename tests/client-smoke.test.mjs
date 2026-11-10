@@ -342,6 +342,8 @@ assert.deepEqual(exports.inject, ["remote"], "inject declares the remote service
 let unmounted = false;
 let registered;
 let chipComponent;
+let diffTabComponent;
+let diffTitleComponent;
 const statusValue = { repository: true, current: "main", detached: false, branches: [{ name: "main", current: true }], dirtyLines: 0 };
 const scope = {
 	remote: {
@@ -359,14 +361,23 @@ const scope = {
 	},
 	slots: {
 		inject(slotName, callback) {
-			assert.equal(slotName, "conversation.input.left");
 			callback();
 		},
 		register(definition, component) {
-			registered = definition;
-			chipComponent = component;
+			if (definition.name === "conversation.input.left") {
+				registered = definition;
+				chipComponent = component;
+			} else if (definition.name === "sidebar.right.pane.tab") {
+				diffTabComponent = component;
+			} else if (definition.name === "sidebar.right.pane.tab.title") {
+				diffTitleComponent = component;
+			}
 			return definition;
 		}
+	},
+	layout: {
+		openRightbar() {},
+		closeRightbar() {}
 	}
 };
 const ctx = {
@@ -378,7 +389,7 @@ const ctx = {
 		}
 	},
 	inject(keys, callback) {
-		assert.deepEqual(keys, ["remote.branchSwitcher", "slots"]);
+		assert.deepEqual(keys, ["remote.branchSwitcher", "slots", "layout"]);
 		callback(scope);
 		return {
 			then: (onFulfilled) => Promise.resolve().then(onFulfilled),
@@ -482,9 +493,15 @@ const panelNode = () => findByClass(surface.tree(), "dshgbs-menu")[0];
 				callback();
 			},
 			register(definition, component) {
-				chipComponent = component;
+				if (definition.name === "conversation.input.left") {
+					chipComponent = component;
+				}
 				return definition;
 			}
+		},
+		layout: {
+			openRightbar() {},
+			closeRightbar() {}
 		}
 	};
 	await portalExports.apply({

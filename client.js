@@ -1396,6 +1396,9 @@ window.__ModuleLoader__.load({
 .${BASE}-file-stats{flex:0 0 auto;display:flex;gap:4px;font-size:10px;font-weight:600;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace)}
 .${BASE}-file-stat-added{color:#16a34a}
 .${BASE}-file-stat-deleted{color:#dc2626}
+.${BASE}-rightbar-tab{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.${BASE}-rightbar-header{padding:12px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));font-weight:600;font-size:14px;color:var(--dsw-alias-label-primary,#333)}
+.${BASE}-rightbar-title{display:inline-flex;align-items:center;gap:6px}
 `;
 		const insertStyles = () => {
 			if (typeof document === "undefined") return;
@@ -1640,9 +1643,101 @@ window.__ModuleLoader__.load({
 			return Math.max(84, clearance + 20);
 		};
 
+		/**
+		 * Split a unified diff into per-file sections so the UI can show one
+		 * file at a time with stats. Untracked-file hunks synthesized by the
+		 * Host start with "diff --git" just like regular git output.
+		 * @param patch - Raw unified diff text.
+		 * @returns Array of file diff entries.
+		 */
+		const parsePatch = (patch) => {
+			if (patch.length === 0) return [];
+			const entries = [];
+			const lines = patch.split(/\r?\n/u);
+			let current = null;
+			let added = 0;
+			let deleted = 0;
+			for (const line of lines) {
+				if (line.startsWith("diff --git")) {
+					if (current !== null) {
+						current.added = added;
+						current.deleted = deleted;
+						entries.push(current);
+					}
+					const match = line.match(/^diff --git a\/(.+?) b\/(.+)$/u);
+					const path = match !== null ? match[2] : "";
+					current = { path, lines: [], added: 0, deleted: 0 };
+					added = 0;
+					deleted = 0;
+				} else if (current !== null) {
+					current.lines.push(line);
+					if (line.startsWith("+") && !line.startsWith("+++") && !line.startsWith("@@")) {
+						added += 1;
+					} else if (line.startsWith("-") && !line.startsWith("---") && !line.startsWith("@@")) {
+						deleted += 1;
+					}
+				}
+			}
+			if (current !== null) {
+				current.added = added;
+				current.deleted = deleted;
+				entries.push(current);
+			}
+			return entries;
+		};
+		/**
+		 * Render a unified diff patch with a file list and per-file viewer.
+		 * @param props.files - File rows returned by the Host diff method.
+		 * @param props.patch - Unified diff patch text.
+		 */
+		const DiffViewer = (props) => {
+			const { files, patch } = props;
+			const [selected, setSelected] = React.useState(files[0]?.path);
+			const patchEntries = React.useMemo(() => parsePatch(patch), [patch]);
+			React.useEffect(() => {
+				setSelected(files[0]?.path);
+			}, [files]);
+			const selectedEntry = patchEntries.find((entry) => entry.path === selected) ?? patchEntries[0] ?? null;
+			const fileRows = files.map((row) => {
+				const entry = patchEntries.find((e) => e.path === row.path);
+				const added = entry?.added ?? 0;
+				const deleted = entry?.deleted ?? 0;
+				return h("div", {
+					key: row.path,
+					className: `${BASE}-file-row ${selected === row.path ? `${BASE}-file-row-selected` : ""}`,
+					onClick: () => setSelected(row.path)
+				},
+					h("span", { className: `${BASE}-file-kind ${BASE}-file-kind-${row.kind}` }, row.kind[0].toUpperCase()),
+					h("span", { className: `${BASE}-file-path`, title: row.path }, row.path),
+					h("span", { className: `${BASE}-file-stats` },
+						added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${added}`) : null,
+						deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${deleted}`) : null));
+			});
+			const renderDiffLine = (line, index) => {
+				let className = `${BASE}-diff-line`;
+				if (line.startsWith("+")) className += ` ${BASE}-diff-line-added`;
+				else if (line.startsWith("-")) className += ` ${BASE}-diff-line-deleted`;
+				else if (line.startsWith("@@")) className += ` ${BASE}-diff-line-meta`;
+				else if (line.startsWith("diff --git") || line.startsWith("index ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("new file") || line.startsWith("deleted file") || line.startsWith("similarity") || line.startsWith("rename")) className += ` ${BASE}-diff-line-header`;
+				return h("div", { key: index, className }, h("span", { className: `${BASE}-diff-line-content` }, line || " "));
+			};
+			const diffBody = selectedEntry === null
+				? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
+				: h("div", { className: `${BASE}-diff-body` },
+					h("div", { className: `${BASE}-diff-file-header` },
+						h("span", { className: `${BASE}-diff-file-path`, title: selectedEntry.path }, selectedEntry.path),
+						h("span", { className: `${BASE}-diff-file-stats` },
+							selectedEntry.added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${selectedEntry.added}`) : null,
+							selectedEntry.deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${selectedEntry.deleted}`) : null)),
+					h("div", { className: `${BASE}-diff-lines` }, selectedEntry.lines.map(renderDiffLine)));
+			return h("div", { className: `${BASE}-diff-layout` },
+				h("div", { className: `${BASE}-diff-files` }, fileRows),
+				diffBody);
+		};
+
 		/** Composer chip: shows the current branch, opens the switcher menu, and mirrors model-selection's popover behavior. */
 		function Chip(props) {
-			const { sessionId, call } = props;
+			const { sessionId, call, layout } = props;
 			const [status, setStatus] = React.useState(() => statusMemory.get(sessionId));
 			const [open, setOpen] = React.useState(false);
 			const [busy, setBusy] = React.useState(false);
@@ -1791,41 +1886,6 @@ window.__ModuleLoader__.load({
 			 * @param patch - Raw unified diff text.
 			 * @returns Array of file diff entries.
 			 */
-			const parsePatch = React.useCallback((patch) => {
-				if (patch.length === 0) return [];
-				const entries = [];
-				const lines = patch.split(/\r?\n/u);
-				let current = null;
-				let added = 0;
-				let deleted = 0;
-				for (const line of lines) {
-					if (line.startsWith("diff --git")) {
-						if (current !== null) {
-							current.added = added;
-							current.deleted = deleted;
-							entries.push(current);
-						}
-						const match = line.match(/^diff --git a\/(.+?) b\/(.+)$/u);
-						const path = match !== null ? match[2] : "";
-						current = { path, lines: [], added: 0, deleted: 0 };
-						added = 0;
-						deleted = 0;
-					} else if (current !== null) {
-						current.lines.push(line);
-						if (line.startsWith("+") && !line.startsWith("+++") && !line.startsWith("@@")) {
-							added += 1;
-						} else if (line.startsWith("-") && !line.startsWith("---") && !line.startsWith("@@")) {
-							deleted += 1;
-						}
-					}
-				}
-				if (current !== null) {
-					current.added = added;
-					current.deleted = deleted;
-					entries.push(current);
-				}
-				return entries;
-			}, []);
 			/**
 			 * Fetch the change snapshot in the background while the menu is
 			 * open, so the push and stash panels show their list right away.
@@ -2429,12 +2489,23 @@ window.__ModuleLoader__.load({
 						role: "menuitem",
 						disabled: busy,
 						onClick: () => {
-							setMode("diff");
-							setPanelMode(true);
-							try {
-								localStorage.setItem("dsh-gbs-panel-mode", "1");
-							} catch {}
-							loadDiff("all");
+							setOpen(false);
+							if (layout !== void 0 && layout !== null) {
+								try {
+									layout.openRightbar(true, false);
+								} catch (cause) {
+									console.warn("[git-branch-switcher] openRightbar failed", cause);
+								}
+							} else {
+								// Fallback for hosts without the layout service: show the
+								// diff in the floating panel.
+								setMode("diff");
+								setPanelMode(true);
+								try {
+									localStorage.setItem("dsh-gbs-panel-mode", "1");
+								} catch {}
+								loadDiff("all");
+							}
 						}
 					}, h("span", { className: `${BASE}-row-mark` }, h(DiffIcon, null)), h("span", { className: `${BASE}-row-name` }, t("menu.diff")))));
 			const createPanel = h("div", { className: `${BASE}-panel` },
@@ -2736,40 +2807,6 @@ window.__ModuleLoader__.load({
 						onClick: () => doStashDrop("", true)
 					}, t("stash.dropAll")) : null));
 			const stashPanel = stashMode === "list" ? stashListPanel : stashSavePanel;
-			const patchEntries = React.useMemo(() => parsePatch(diffPatch), [parsePatch, diffPatch]);
-			const selectedEntry = patchEntries.find((entry) => entry.path === diffSelected) ?? patchEntries[0] ?? null;
-			const diffFileRows = (diffFiles ?? []).map((row) => {
-				const entry = patchEntries.find((e) => e.path === row.path);
-				const added = entry?.added ?? 0;
-				const deleted = entry?.deleted ?? 0;
-				return h("div", {
-					key: row.path,
-					className: `${BASE}-file-row ${diffSelected === row.path ? `${BASE}-file-row-selected` : ""}`,
-					onClick: () => setDiffSelected(row.path)
-				},
-					h("span", { className: `${BASE}-file-kind ${BASE}-file-kind-${row.kind}` }, row.kind[0].toUpperCase()),
-					h("span", { className: `${BASE}-file-path`, title: row.path }, row.path),
-					h("span", { className: `${BASE}-file-stats` },
-						added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${added}`) : null,
-						deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${deleted}`) : null));
-			});
-			const renderDiffLine = (line, index) => {
-				let className = `${BASE}-diff-line`;
-				if (line.startsWith("+")) className += ` ${BASE}-diff-line-added`;
-				else if (line.startsWith("-")) className += ` ${BASE}-diff-line-deleted`;
-				else if (line.startsWith("@@")) className += ` ${BASE}-diff-line-meta`;
-				else if (line.startsWith("diff --git") || line.startsWith("index ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("new file") || line.startsWith("deleted file") || line.startsWith("similarity") || line.startsWith("rename")) className += ` ${BASE}-diff-line-header`;
-				return h("div", { key: index, className }, h("span", { className: `${BASE}-diff-line-content` }, line || " "));
-			};
-			const diffBody = selectedEntry === null
-				? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
-				: h("div", { className: `${BASE}-diff-body` },
-					h("div", { className: `${BASE}-diff-file-header` },
-						h("span", { className: `${BASE}-diff-file-path`, title: selectedEntry.path }, selectedEntry.path),
-						h("span", { className: `${BASE}-diff-file-stats` },
-							selectedEntry.added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${selectedEntry.added}`) : null,
-							selectedEntry.deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${selectedEntry.deleted}`) : null)),
-					h("div", { className: `${BASE}-diff-lines` }, selectedEntry.lines.map(renderDiffLine)));
 			const diffPanel = h("div", { className: `${BASE}-panel ${BASE}-diff-panel` },
 				h("div", { className: `${BASE}-panel-title` }, t("diff.title")),
 				h("div", { className: `${BASE}-panel-hint` }, t("diff.hint")),
@@ -2788,9 +2825,7 @@ window.__ModuleLoader__.load({
 					? h("div", { className: `${BASE}-empty` }, t("diff.loading"))
 					: diffFiles.length === 0
 						? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
-						: h("div", { className: `${BASE}-diff-layout` },
-							h("div", { className: `${BASE}-diff-files` }, diffFileRows),
-							diffBody),
+						: h(DiffViewer, { files: diffFiles, patch: diffPatch }),
 				h("div", { className: `${BASE}-panel-actions` },
 					h("button", {
 						type: "button",
@@ -2834,6 +2869,41 @@ window.__ModuleLoader__.load({
 				}, h(BranchIcon, null), h("span", { className: `${BASE}-label` }, label), h(Chevron, { open })),
 				menu);
 		}
+		/**
+		 * Right-sidebar diff tab: fetches the working-tree diff and renders it
+		 * through DiffViewer so it lives inside DSH's native rightbar layout.
+		 */
+		const DiffTab = (props) => {
+			const { sessionId, call } = props;
+			const [diffFiles, setDiffFiles] = React.useState(void 0);
+			const [diffPatch, setDiffPatch] = React.useState("");
+			const [error, setError] = React.useState(void 0);
+			React.useEffect(() => {
+				let cancelled = false;
+				call("diff", { sessionId, from: "HEAD", to: "WORKTREE" }).then((result) => {
+					if (cancelled) return;
+					setDiffFiles(result.files);
+					setDiffPatch(result.patch);
+					setError(void 0);
+				}).catch((cause) => {
+					if (cancelled) return;
+					const message = String(cause?.message ?? cause);
+					console.warn("[git-branch-switcher] rightbar diff failed", cause);
+					setError(t("error.diffFailed", { message }));
+					setDiffFiles([]);
+				});
+				return () => { cancelled = true; };
+			}, [call, sessionId]);
+			return h("div", { className: `${BASE}-rightbar-tab` },
+				h("div", { className: `${BASE}-rightbar-header` }, t("diff.title")),
+				error !== void 0 ? h("div", { className: `${BASE}-error` }, error) : null,
+				diffFiles === void 0
+					? h("div", { className: `${BASE}-empty` }, t("diff.loading"))
+					: diffFiles.length === 0
+						? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
+						: h(DiffViewer, { files: diffFiles, patch: diffPatch }));
+		};
+		const DiffTabTitle = () => h("span", { className: `${BASE}-rightbar-title` }, t("diff.title"));
 		//#endregion
 
 		//#region plugin
@@ -2848,7 +2918,7 @@ window.__ModuleLoader__.load({
 		async function apply(ctx) {
 			insertStyles();
 			const unmountRemote = await ctx.remote.$mount(TYPERT_REMOTE);
-			const scope = ctx.inject(["remote.branchSwitcher", "slots"], (child) => {
+			const scope = ctx.inject(["remote.branchSwitcher", "slots", "layout"], (child) => {
 				const invoke = async (method, input) => {
 					const result = await child.remote.branchSwitcher[method](input);
 					if (result !== null && typeof result === "object" && "ok" in result) {
@@ -2861,15 +2931,31 @@ window.__ModuleLoader__.load({
 					}
 					return result;
 				};
+				const layout = child.layout;
 				child.slots.inject(SLOT_NAME, () => child.slots.register({
 					name: SLOT_NAME,
 					id: SLOT_ID,
 					order: 0,
 					inject: (sessionId) => ({
 						sessionId,
-						call: invoke
+						call: invoke,
+						layout
 					})
 				}, (props) => h(ChipErrorBoundary, null, h(Chip, props))));
+				child.slots.inject("sidebar.right.pane.tab", () => child.slots.register({
+					name: "sidebar.right.pane.tab",
+					id: "git-branch-switcher-diff",
+					key: "git-branch-switcher-diff",
+					inject: (sessionId) => ({
+						sessionId,
+						call: invoke
+					})
+				}, DiffTab));
+				child.slots.inject("sidebar.right.pane.tab.title", () => child.slots.register({
+					name: "sidebar.right.pane.tab.title",
+					id: "git-branch-switcher-diff-title",
+					key: "git-branch-switcher-diff"
+				}, DiffTabTitle));
 			});
 			try {
 				await scope;

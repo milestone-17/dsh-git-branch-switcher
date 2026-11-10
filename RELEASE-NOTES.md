@@ -1,3 +1,24 @@
+# v0.7.8 — diff 视图接入 DSH 右侧边栏
+
+## 改进 / Improvements
+
+- **diff 视图改为右侧边栏标签页**：不再使用浮层面板，而是注册到 DSH 原生的 `sidebar.right.pane.tab` / `sidebar.right.pane.tab.title` 插槽，成为右侧边栏的一个标签页，与「上下文」等面板一样接入 DSH 布局。
+- **点击「查看变更」打开右侧边栏**：分支菜单里的「查看变更」现在调用 `layout.openRightbar(true, false)` 打开右侧边栏，并自动显示 Git Diff 标签页（DSH 负责 tab 切换）。
+- **提取 DiffViewer 组件**：复用 diff 渲染逻辑，保持文件列表、+N/-M 统计、语法高亮。
+- **兼容无 layout 服务的旧宿主**：如果宿主没有 `layout` 服务，仍回退到原来的浮层面板。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.7 — 捕获 chip 渲染崩溃并显示错误图标
 
 ## 修复 / Fixes
