@@ -1,3 +1,23 @@
+# v0.8.1 — 左右对比支持拖动调整列宽
+
+## 改进 / Improvements
+
+- **左右对比模式下可拖动调整列宽**：在左右两栏之间加了一条可拖拽的分隔线，按住拖动即可改变左右列的宽度比例。
+- **记住列宽偏好**：比例会写入 `localStorage`，下次打开左右对比时保持上次调整的比例。
+- **限制最小宽度**：左右列都保留至少 20% 的空间，避免某一列被拖没。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.8.0 — diff 支持上下 / 左右两种对比模式
 
 ## 改进 / Improvements

@@ -1404,12 +1404,17 @@ window.__ModuleLoader__.load({
 .${BASE}-rightbar-header{padding:12px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));font-weight:600;font-size:14px;color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-rightbar-title{display:inline-flex;align-items:center;gap:6px}
 .${BASE}-diff-mode-button{margin-left:8px;padding:2px 8px;font-size:11px}
-.${BASE}-diff-split{display:flex;flex-direction:column;overflow:auto;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px}
-.${BASE}-diff-split-header{display:grid;grid-template-columns:1fr 1fr;position:sticky;top:0;background:var(--dsw-alias-bg-base,#fff);border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));z-index:1}
+.${BASE}-diff-split{display:flex;flex-direction:column;overflow:auto;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px;position:relative}
+.${BASE}-diff-split-header{display:grid;position:sticky;top:0;background:var(--dsw-alias-bg-base,#fff);border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));z-index:1}
 .${BASE}-diff-split-header span{padding:4px 8px;font-weight:600;color:var(--dsw-alias-label-secondary,#666)}
-.${BASE}-diff-split-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.06))}
+.${BASE}-diff-split-header-splitter{border-right:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
+.${BASE}-diff-split-row{display:grid;border-bottom:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.06))}
 .${BASE}-diff-split-cell{overflow:hidden;text-overflow:ellipsis;white-space:pre;padding:2px 8px;min-height:1.4em}
-.${BASE}-diff-split-cell:first-child{border-right:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
+.${BASE}-diff-split-splitter{border-right:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
+.${BASE}-diff-split-overlay{position:absolute;top:0;bottom:0;width:4px;transform:translateX(-2px);z-index:2;display:flex;justify-content:center;pointer-events:none}
+.${BASE}-diff-split-handle{width:4px;height:100%;cursor:col-resize;background:transparent;pointer-events:auto;transition:background .15s var(--${BASE}-ease)}
+.${BASE}-diff-split-handle:hover{background:var(--dsw-alias-border-l1,rgba(127,127,127,.3))}
+.${BASE}-diff-split-handle:active{background:var(--dsw-alias-border-l1,rgba(127,127,127,.5))}
 `;
 		const insertStyles = () => {
 			if (typeof document === "undefined") return;
@@ -1711,6 +1716,16 @@ window.__ModuleLoader__.load({
 					return "unified";
 				}
 			});
+			const [splitRatio, setSplitRatio] = React.useState(() => {
+				try {
+					const raw = Number.parseFloat(localStorage.getItem("dsh-gbs-split-ratio") ?? "0.5");
+					return Number.isFinite(raw) ? Math.max(0.2, Math.min(0.8, raw)) : 0.5;
+				} catch {
+					return 0.5;
+				}
+			});
+			const splitRef = React.useRef(null);
+			const draggingRef = React.useRef(false);
 			const patchEntries = React.useMemo(() => parsePatch(patch), [patch]);
 			React.useEffect(() => {
 				setSelected(files[0]?.path);
@@ -1722,6 +1737,30 @@ window.__ModuleLoader__.load({
 				try {
 					localStorage.setItem("dsh-gbs-diff-mode", next);
 				} catch {}
+			};
+			const startSplitDrag = (event) => {
+				event.preventDefault();
+				draggingRef.current = true;
+				const move = (moveEvent) => {
+					if (!draggingRef.current || splitRef.current === null) return;
+					const rect = splitRef.current.getBoundingClientRect();
+					const next = Math.max(0.2, Math.min(0.8, (moveEvent.clientX - rect.left) / rect.width));
+					setSplitRatio(next);
+				};
+				const up = () => {
+					draggingRef.current = false;
+					if (typeof document !== "undefined") {
+						document.removeEventListener("mousemove", move);
+						document.removeEventListener("mouseup", up);
+					}
+					try {
+						localStorage.setItem("dsh-gbs-split-ratio", String(splitRatio));
+					} catch {}
+				};
+				if (typeof document !== "undefined") {
+					document.addEventListener("mousemove", move);
+					document.addEventListener("mouseup", up);
+				}
 			};
 			const fileRows = files.map((row) => {
 				const entry = patchEntries.find((e) => e.path === row.path);
@@ -1747,8 +1786,13 @@ window.__ModuleLoader__.load({
 				return className;
 			};
 			const renderDiffLine = (line, index) => h("div", { key: index, className: lineClass(line) }, h("span", { className: `${BASE}-diff-line-content` }, line || " "));
-			const renderSplitLine = (row, index) => h("div", { key: index, className: `${BASE}-diff-split-row` },
+			const renderSplitLine = (row, index) => h("div", {
+				key: index,
+				className: `${BASE}-diff-split-row`,
+				style: { gridTemplateColumns: `minmax(0, ${splitRatio}fr) 4px minmax(0, ${1 - splitRatio}fr)` }
+			},
 				h("div", { className: `${BASE}-diff-split-cell ${row.left === "" ? "" : lineClass(row.left)}` }, h("span", { className: `${BASE}-diff-line-content` }, row.left || " ")),
+				h("div", { className: `${BASE}-diff-split-splitter` }),
 				h("div", { className: `${BASE}-diff-split-cell ${row.right === "" ? "" : lineClass(row.right)}` }, h("span", { className: `${BASE}-diff-line-content` }, row.right || " ")));
 			const splitRows = React.useMemo(() => {
 				if (selectedEntry === null) return [];
@@ -1795,11 +1839,17 @@ window.__ModuleLoader__.load({
 							selectedEntry.deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${selectedEntry.deleted}`) : null,
 							modeButton)),
 					mode === "split"
-						? h("div", { className: `${BASE}-diff-split` },
-							h("div", { className: `${BASE}-diff-split-header` },
+						? h("div", { className: `${BASE}-diff-split`, ref: splitRef },
+							h("div", {
+								className: `${BASE}-diff-split-header`,
+								style: { gridTemplateColumns: `minmax(0, ${splitRatio}fr) 4px minmax(0, ${1 - splitRatio}fr)` }
+							},
 								h("span", null, "-"),
+								h("div", { className: `${BASE}-diff-split-header-splitter` }),
 								h("span", null, "+")),
-							splitRows.map(renderSplitLine))
+							splitRows.map(renderSplitLine),
+							h("div", { className: `${BASE}-diff-split-overlay`, style: { left: `${splitRatio * 100}%` } },
+								h("div", { className: `${BASE}-diff-split-handle`, onMouseDown: startSplitDrag })))
 						: h("div", { className: `${BASE}-diff-lines` }, selectedEntry.lines.map(renderDiffLine)));
 			return h("div", { className: `${BASE}-diff-layout` },
 				h("div", { className: `${BASE}-diff-files` }, fileRows),
