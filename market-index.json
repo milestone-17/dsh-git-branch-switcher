@@ -47,8 +47,20 @@
       },
       "versions": [
         {
+          "version": "0.8.0",
+          "publishTimestamp": 1794293131,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
+            "commit": "fc77317014e4326ea8cfe4b0eb0f3e94e497922a"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.2 <0.3.0 || >=0.3.0-rc.1 <0.4.0-0"
+          }
+        },
+        {
           "version": "0.7.9",
-          "publishTimestamp": 1794292332,
+          "publishTimestamp": 1794286328,
           "source": {
             "type": "git",
             "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
