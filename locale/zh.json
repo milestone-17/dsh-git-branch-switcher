@@ -1,6 +1,8 @@
 {
   "chip.detached": "游离 HEAD",
   "chip.loading": "正在读取分支…",
+  "chip.error": "Git？",
+  "chip.statusFailed": "无法读取仓库状态，点击重试。",
   "menu.title": "切换分支",
   "menu.filter": "搜索分支",
   "menu.empty": "没有找到分支。",

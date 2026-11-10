@@ -1,6 +1,8 @@
 {
   "chip.detached": "detached HEAD",
   "chip.loading": "loading branch…",
+  "chip.error": "Git?",
+  "chip.statusFailed": "Could not read repository status. Click to retry.",
   "menu.title": "Switch branch",
   "menu.filter": "Search branches",
   "menu.empty": "No branch found.",

@@ -1,3 +1,22 @@
+# v0.7.6 — 修复重启后插件图标消失的问题
+
+## 修复 / Fixes
+
+- **状态读取失败时仍显示 Git 图标**：v0.7.5 重启后部分用户反馈分支图标消失，可能是状态调用失败导致组件返回 null。现在即使 `status` 调用失败或会话尚未关联仓库，也会显示一个带红色边框的「Git?」图标，点击即可重试。
+- **增加错误状态样式**：红色边框提示用户状态读取异常。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.5 — 重做 diff 面板：右侧大图、按文件查看、带 +N/-M 统计
 
 ## 改进 / Improvements

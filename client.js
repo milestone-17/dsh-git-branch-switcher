@@ -1020,6 +1020,8 @@ window.__ModuleLoader__.load({
 		const en = {
 			"chip.detached": "detached HEAD",
 			"chip.loading": "loading branch…",
+			"chip.error": "Git?",
+			"chip.statusFailed": "Could not read repository status. Click to retry.",
 			"menu.title": "Switch branch",
 			"menu.filter": "Search branches",
 			"menu.empty": "No branch found.",
@@ -1132,6 +1134,8 @@ window.__ModuleLoader__.load({
 		const zh = {
 			"chip.detached": "游离 HEAD",
 			"chip.loading": "正在读取分支…",
+			"chip.error": "Git？",
+			"chip.statusFailed": "无法读取仓库状态，点击重试。",
 			"menu.title": "切换分支",
 			"menu.filter": "搜索分支",
 			"menu.empty": "没有找到分支。",
@@ -1261,6 +1265,8 @@ window.__ModuleLoader__.load({
 .${BASE}-chip:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:1px}
 .${BASE}-chip-hint{opacity:.75;cursor:help}
 .${BASE}-chip-hint:hover{opacity:1}
+.${BASE}-chip-error{border-color:var(--dsw-alias-state-error-primary,#d33);color:var(--dsw-alias-state-error-primary,#d33)}
+.${BASE}-chip-error:hover{background:var(--dsw-alias-state-error-bg-hover,rgba(211,51,51,.08))}
 .${BASE}-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:11.5px}
 /* Mirror the native permission chip: the composer row is a size container, so
    hide the branch text (and the chevron gap) when the row runs out of width. */
@@ -1886,7 +1892,19 @@ window.__ModuleLoader__.load({
 						onClick: dismissHint
 					}, h(BranchIcon, null), h("span", { className: `${BASE}-label` }, "Git"));
 				}
-				return null;
+				// Always render the chip so users can still open the menu and retry
+				// even if the initial status call failed or the session is not yet
+				// associated with a git repository.
+				return h("button", {
+					type: "button",
+					className: `${BASE}-chip ${status === null ? `${BASE}-chip-error` : ""}`,
+					title: status === null ? t("chip.statusFailed") : t("menu.title"),
+					"aria-label": t("menu.title"),
+					onClick: () => {
+						refresh();
+						openMenu();
+					}
+				}, h(BranchIcon, null), h("span", { className: `${BASE}-label` }, status === null ? t("chip.error") : t("chip.loading")), h(Chevron, { open: false }));
 			}
 			const detached = status.detached === true || status.current === void 0;
 			const label = detached ? t("chip.detached") : status.current;
