@@ -447,7 +447,8 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	}
 
 	/**
-	 * Compute a diff between two snapshots or between a snapshot and HEAD.
+	 * Compute a diff between two snapshots, between a snapshot and HEAD, or
+	 * between a snapshot and the current working tree.
 	 * @param request - Request object carrying the session identity, from id, and to id.
 	 * @param signal - Cancellation signal of the Remote call.
 	 * @returns File list with change kinds and the unified diff patch.
@@ -455,9 +456,9 @@ export default class BranchSwitcherService extends TypertRemoteService {
 	async diff(request, signal) {
 		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
 		const resolveTree = (id) => {
-			if (id === "HEAD") return "HEAD";
+			if (id === "HEAD" || id === "WORKTREE") return id;
 			if (typeof id !== "string" || id.length === 0) {
-				throw new RemoteError("branchSwitcher/invalid-snapshot", "snapshot id must be a non-empty string or HEAD", {});
+				throw new RemoteError("branchSwitcher/invalid-snapshot", "snapshot id must be a non-empty string, HEAD, or WORKTREE", {});
 			}
 			// Snapshot ids are stored as "tree:head"; the tree is the diff operand.
 			const colon = id.indexOf(":");
@@ -465,9 +466,14 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		};
 		const fromTree = resolveTree(request.from);
 		const toTree = resolveTree(request.to);
+		const worktreeArgs = (tree) => tree === "WORKTREE" ? [] : [tree];
+		const nameStatusArgs = ["diff", "--name-status", ...worktreeArgs(fromTree)];
+		if (toTree !== "WORKTREE") nameStatusArgs.push(toTree);
+		const patchArgs = ["diff", ...worktreeArgs(fromTree)];
+		if (toTree !== "WORKTREE") patchArgs.push(toTree);
 		const [nameStatus, patch] = await Promise.all([
-			runGit(this.ctx, toplevel, ["diff", "--name-status", fromTree, toTree], signal),
-			runGit(this.ctx, toplevel, ["diff", fromTree, toTree], signal)
+			runGit(this.ctx, toplevel, nameStatusArgs, signal),
+			runGit(this.ctx, toplevel, patchArgs, signal)
 		]);
 		if (nameStatus.exitCode !== 0) {
 			throw new RemoteError("branchSwitcher/diff-failed", gitMessage(nameStatus, "git diff failed"), {});

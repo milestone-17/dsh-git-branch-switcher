@@ -716,11 +716,11 @@ const panelNode = () => findByClass(surface.tree(), "dshgbs-menu")[0];
 	diffEntry.props.onClick();
 	await surface.settle();
 	const snapshotCall = mounted.calls.find((entry) => entry.method === "snapshot");
-	assert.ok(snapshotCall !== void 0, "opening the diff view captures a working-tree snapshot");
+	assert.equal(snapshotCall, void 0, "all-changes scope does not waste time capturing a snapshot");
 	const diffCall = mounted.calls.find((entry) => entry.method === "diff");
 	assert.ok(diffCall !== void 0, "opening the diff view calls the diff method");
 	assert.equal(diffCall.input.from, "HEAD", "all-changes scope compares against HEAD");
-	assert.ok(typeof diffCall.input.to === "string" && diffCall.input.to !== "HEAD", "all-changes scope compares HEAD to the current working-tree snapshot");
+	assert.equal(diffCall.input.to, "WORKTREE", "all-changes scope diffs HEAD against the working tree directly");
 }
 
 // --- the shipped locale files match the inline dictionaries ---

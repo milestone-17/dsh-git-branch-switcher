@@ -89,7 +89,7 @@ dsh plugin --profile desktop install git+https://gitclone.com/github.com/milesto
 dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz
 
 # 或钉住当前版本
-dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.7.1/dsh-git-branch-switcher-0.7.1.tgz
+dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.7.2/dsh-git-branch-switcher-0.7.2.tgz
 ```
 
 ### 方式三：市场索引
@@ -131,7 +131,7 @@ dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher
   - `create`：`git switch -c <新分支> <源分支>`，源分支可以是本地分支，也可以是远端跟踪分支（解析成具体的 ref）；重名或源分支不存在时分别报 `branchSwitcher/branch-exists`、`branchSwitcher/base-missing`；工作区不干净时先返回确认请求；建分支后把源分支写入 `branch.<名>.dsh-base` 本地配置（只落 `.git/config`，不随 push 上传）。
   - `changes`：`status --porcelain -z` 解析成带类型的改动行（新增/修改/删除/重命名/未跟踪）+ `rev-list --count @{u}..HEAD` 未推送提交数 + 远端列表 + 合并中状态；带 `inferTargetFor` 时按「记录源 → 上游 → merge-base → master/main」推断合并目标。
   - `snapshot`：用临时 `GIT_INDEX_FILE` 做 `read-tree HEAD` + `add --all` + `write-tree`，把当前工作树捕获为一个 git tree 对象；返回 `snapshotId`（格式 `tree:head`）与时间戳；每个会话保留最近 32 条快照。
-  - `diff`：接受 `from`/`to` 两个快照 id（或 `HEAD`），跑 `git diff --name-status` 与 `git diff`，返回文件变更列表（含类型）与统一 diff patch。
+  - `diff`：接受 `from`/`to` 两个快照 id（或 `HEAD`、`WORKTREE`），跑 `git diff --name-status` 与 `git diff`，返回文件变更列表（含类型）与统一 diff patch；`to: "WORKTREE"` 表示对比当前工作区，不写入临时索引。
   - `push`：勾选文件用 `:(literal)` pathspec 逐个 `git add` → `commit -m` → 无上游时 `push -u origin HEAD` 否则 `git push`；无远端/无可提交内容/空提交信息分别报 `branchSwitcher/no-remote`、`branchSwitcher/nothing-staged`、`branchSwitcher/empty-message`；远端拒绝时报 `branchSwitcher/push-rejected`（不 force push）。
   - `merge`：记录原分支 → `switch 目标` → `merge 来源` → 成功 `switch` 回原分支并返回模式（fast-forward/true/up-to-date）；冲突时留在目标分支返回冲突文件清单；非冲突失败自动 `merge --abort` 并恢复原分支。
   - `mergeAbort`：检测到 `MERGE_HEAD` 才执行 `git merge --abort`；无合并中状态报 `branchSwitcher/not-merging`。

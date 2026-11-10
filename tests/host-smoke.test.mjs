@@ -455,6 +455,9 @@ try {
 	assert.ok(headDiff.patch.includes("demo content"), "diff patch contains the new content");
 	const snapshotDiff = await service.diff({ sessionId: "session-1", from: before.snapshotId, to: after.snapshotId });
 	assert.ok(snapshotDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "added"), "diff between snapshots finds the new file");
+	const worktreeDiff = await service.diff({ sessionId: "session-1", from: "HEAD", to: "WORKTREE" });
+	assert.ok(worktreeDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "added"), "diff against WORKTREE finds the new file");
+	assert.ok(worktreeDiff.patch.includes("demo content"), "WORKTREE diff patch contains the new content");
 	await assert.rejects(
 		() => service.diff({ sessionId: "session-1", from: "", to: after.snapshotId }),
 		(error) => error?.code === "branchSwitcher/invalid-snapshot",

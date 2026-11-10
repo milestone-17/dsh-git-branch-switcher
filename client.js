@@ -1578,9 +1578,9 @@ window.__ModuleLoader__.load({
 				}
 			}, [call, sessionId]);
 			/**
-			 * Load a diff for the selected scope. Both scopes compare a baseline
-			 * (HEAD for "all", or the chosen snapshot id) against the current
-			 * working tree, which we capture as a fresh snapshot first.
+			 * Load a diff for the selected scope. "all" compares HEAD directly to
+			 * the working tree (fast, no snapshot write). A snapshot id compares
+			 * that baseline to the current working tree captured as a fresh snapshot.
 			 */
 			const loadDiff = React.useCallback(async (scope) => {
 				setDiffFiles(void 0);
@@ -1588,9 +1588,9 @@ window.__ModuleLoader__.load({
 				setDiffSelected(void 0);
 				try {
 					const from = scope === "all" ? "HEAD" : scope;
-					const current = await recordSnapshot(scope === "all" ? "diff current" : "diff baseline");
-					if (current === void 0) return;
-					const result = await call("diff", { sessionId, from, to: current });
+					const to = scope === "all" ? "WORKTREE" : await recordSnapshot("diff current");
+					if (to === void 0) return;
+					const result = await call("diff", { sessionId, from, to });
 					setDiffFiles(result.files);
 					setDiffPatch(result.patch);
 					if (result.files.length > 0) setDiffSelected(result.files[0].path);

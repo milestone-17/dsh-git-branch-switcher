@@ -1,3 +1,21 @@
+# v0.7.2 — 修复 diff「全部变更」加载卡住的问题
+
+## 修复 / Fixes
+
+- **diff 的「全部变更」不再卡住**：v0.7.1 把「全部变更」改成先 `snapshot` 整个工作区再 `diff`，对大仓库会明显变慢甚至一直显示「正在加载 diff…」。现在「全部变更」直接走 `git diff HEAD`（Host `diff` 新增 `to: "WORKTREE"` 语义），不再写临时索引/树对象；只有「最近基线」才需要快照。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.1 — 修复 diff「全部变更」为空的问题
 
 ## 修复 / Fixes
