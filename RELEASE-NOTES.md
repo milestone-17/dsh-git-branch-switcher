@@ -1,3 +1,23 @@
+# v0.8.0 — diff 支持上下 / 左右两种对比模式
+
+## 改进 / Improvements
+
+- **diff 查看器新增「上下对比 / 左右对比」切换按钮**：默认仍是统一的上下对比（unified diff），点击文件头部右侧的按钮可切换到左右分栏对比（split diff）。
+- **左右对比支持动态调整列宽**：两个版本各占 50%，可随右侧面板宽度自适应。
+- **记住用户偏好**：选择的对比模式会写入 `localStorage`，下次打开 diff 面板自动恢复。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.9 — 正确注册右侧边栏标签页类型
 
 ## 改进 / Improvements

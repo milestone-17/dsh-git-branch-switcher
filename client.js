@@ -1114,6 +1114,8 @@ window.__ModuleLoader__.load({
 			"diff.scopeRecent": "Recent baseline",
 			"diff.loading": "Loading diff…",
 			"diff.empty": "No changes to show.",
+			"diff.unified": "Unified",
+			"diff.split": "Split",
 			"kind.added": "added",
 			"kind.modified": "modified",
 			"kind.deleted": "deleted",
@@ -1228,6 +1230,8 @@ window.__ModuleLoader__.load({
 			"diff.scopeRecent": "最近基线",
 			"diff.loading": "正在加载 diff…",
 			"diff.empty": "没有可显示的变更。",
+			"diff.unified": "上下对比",
+			"diff.split": "左右对比",
 			"kind.added": "新增",
 			"kind.modified": "修改",
 			"kind.deleted": "删除",
@@ -1399,6 +1403,13 @@ window.__ModuleLoader__.load({
 .${BASE}-rightbar-tab{display:flex;flex-direction:column;height:100%;overflow:hidden}
 .${BASE}-rightbar-header{padding:12px 14px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));font-weight:600;font-size:14px;color:var(--dsw-alias-label-primary,#333)}
 .${BASE}-rightbar-title{display:inline-flex;align-items:center;gap:6px}
+.${BASE}-diff-mode-button{margin-left:8px;padding:2px 8px;font-size:11px}
+.${BASE}-diff-split{display:flex;flex-direction:column;overflow:auto;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px}
+.${BASE}-diff-split-header{display:grid;grid-template-columns:1fr 1fr;position:sticky;top:0;background:var(--dsw-alias-bg-base,#fff);border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));z-index:1}
+.${BASE}-diff-split-header span{padding:4px 8px;font-weight:600;color:var(--dsw-alias-label-secondary,#666)}
+.${BASE}-diff-split-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.06))}
+.${BASE}-diff-split-cell{overflow:hidden;text-overflow:ellipsis;white-space:pre;padding:2px 8px;min-height:1.4em}
+.${BASE}-diff-split-cell:first-child{border-right:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13))}
 `;
 		const insertStyles = () => {
 			if (typeof document === "undefined") return;
@@ -1693,11 +1704,25 @@ window.__ModuleLoader__.load({
 		const DiffViewer = (props) => {
 			const { files, patch } = props;
 			const [selected, setSelected] = React.useState(files[0]?.path);
+			const [mode, setMode] = React.useState(() => {
+				try {
+					return localStorage.getItem("dsh-gbs-diff-mode") === "split" ? "split" : "unified";
+				} catch {
+					return "unified";
+				}
+			});
 			const patchEntries = React.useMemo(() => parsePatch(patch), [patch]);
 			React.useEffect(() => {
 				setSelected(files[0]?.path);
 			}, [files]);
 			const selectedEntry = patchEntries.find((entry) => entry.path === selected) ?? patchEntries[0] ?? null;
+			const toggleMode = () => {
+				const next = mode === "unified" ? "split" : "unified";
+				setMode(next);
+				try {
+					localStorage.setItem("dsh-gbs-diff-mode", next);
+				} catch {}
+			};
 			const fileRows = files.map((row) => {
 				const entry = patchEntries.find((e) => e.path === row.path);
 				const added = entry?.added ?? 0;
@@ -1713,23 +1738,69 @@ window.__ModuleLoader__.load({
 						added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${added}`) : null,
 						deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${deleted}`) : null));
 			});
-			const renderDiffLine = (line, index) => {
+			const lineClass = (line) => {
 				let className = `${BASE}-diff-line`;
 				if (line.startsWith("+")) className += ` ${BASE}-diff-line-added`;
 				else if (line.startsWith("-")) className += ` ${BASE}-diff-line-deleted`;
 				else if (line.startsWith("@@")) className += ` ${BASE}-diff-line-meta`;
 				else if (line.startsWith("diff --git") || line.startsWith("index ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("new file") || line.startsWith("deleted file") || line.startsWith("similarity") || line.startsWith("rename")) className += ` ${BASE}-diff-line-header`;
-				return h("div", { key: index, className }, h("span", { className: `${BASE}-diff-line-content` }, line || " "));
+				return className;
 			};
+			const renderDiffLine = (line, index) => h("div", { key: index, className: lineClass(line) }, h("span", { className: `${BASE}-diff-line-content` }, line || " "));
+			const renderSplitLine = (row, index) => h("div", { key: index, className: `${BASE}-diff-split-row` },
+				h("div", { className: `${BASE}-diff-split-cell ${row.left === "" ? "" : lineClass(row.left)}` }, h("span", { className: `${BASE}-diff-line-content` }, row.left || " ")),
+				h("div", { className: `${BASE}-diff-split-cell ${row.right === "" ? "" : lineClass(row.right)}` }, h("span", { className: `${BASE}-diff-line-content` }, row.right || " ")));
+			const splitRows = React.useMemo(() => {
+				if (selectedEntry === null) return [];
+				const rows = [];
+				let pendingDeletions = [];
+				const flushDeletions = () => {
+					for (const line of pendingDeletions) {
+						rows.push({ left: line, right: "" });
+					}
+					pendingDeletions = [];
+				};
+				for (const line of selectedEntry.lines) {
+					if (line.startsWith("@@") || line.startsWith("diff --git") || line.startsWith("index ") || line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("new file") || line.startsWith("deleted file") || line.startsWith("similarity") || line.startsWith("rename")) {
+						flushDeletions();
+						rows.push({ left: line, right: line, isHeader: true });
+					} else if (line.startsWith("-")) {
+						pendingDeletions.push(line);
+					} else if (line.startsWith("+")) {
+						if (pendingDeletions.length > 0) {
+							rows.push({ left: pendingDeletions.shift(), right: line });
+						} else {
+							rows.push({ left: "", right: line });
+						}
+					} else {
+						flushDeletions();
+						rows.push({ left: line, right: line });
+					}
+				}
+				flushDeletions();
+				return rows;
+			}, [selectedEntry]);
+			const modeButton = selectedEntry === null ? null : h("button", {
+				type: "button",
+				className: `${BASE}-button ${BASE}-diff-mode-button`,
+				onClick: toggleMode
+			}, mode === "unified" ? t("diff.split") : t("diff.unified"));
 			const diffBody = selectedEntry === null
 				? h("div", { className: `${BASE}-empty` }, t("diff.empty"))
-				: h("div", { className: `${BASE}-diff-body` },
+				: h("div", { className: `${BASE}-diff-body ${mode === "split" ? `${BASE}-diff-body-split` : ""}` },
 					h("div", { className: `${BASE}-diff-file-header` },
 						h("span", { className: `${BASE}-diff-file-path`, title: selectedEntry.path }, selectedEntry.path),
 						h("span", { className: `${BASE}-diff-file-stats` },
 							selectedEntry.added > 0 ? h("span", { className: `${BASE}-file-stat-added` }, `+${selectedEntry.added}`) : null,
-							selectedEntry.deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${selectedEntry.deleted}`) : null)),
-					h("div", { className: `${BASE}-diff-lines` }, selectedEntry.lines.map(renderDiffLine)));
+							selectedEntry.deleted > 0 ? h("span", { className: `${BASE}-file-stat-deleted` }, `-${selectedEntry.deleted}`) : null,
+							modeButton)),
+					mode === "split"
+						? h("div", { className: `${BASE}-diff-split` },
+							h("div", { className: `${BASE}-diff-split-header` },
+								h("span", null, "-"),
+								h("span", null, "+")),
+							splitRows.map(renderSplitLine))
+						: h("div", { className: `${BASE}-diff-lines` }, selectedEntry.lines.map(renderDiffLine)));
 			return h("div", { className: `${BASE}-diff-layout` },
 				h("div", { className: `${BASE}-diff-files` }, fileRows),
 				diffBody);

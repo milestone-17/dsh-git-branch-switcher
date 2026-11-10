@@ -110,5 +110,7 @@
   "error.failed": "分支操作失败：{message}",
   "error.fetch": "同步远端分支失败：{message}",
   "error.fetchStaleHost": "当前运行的宿主版本较旧，还没有同步能力。请完全退出并重启 DeepSeek Harness 应用后再试。",
-  "error.diffFailed": "Diff 加载失败：{message}"
+  "error.diffFailed": "Diff 加载失败：{message}",
+  "diff.unified": "上下对比",
+  "diff.split": "左右对比"
 }

@@ -110,5 +110,7 @@
   "error.failed": "Branch operation failed: {message}",
   "error.fetch": "Fetch failed: {message}",
   "error.fetchStaleHost": "The running host is an older version without the fetch method. Restart DeepSeek Harness to enable remote syncing.",
-  "error.diffFailed": "Diff failed: {message}"
+  "error.diffFailed": "Diff failed: {message}",
+  "diff.unified": "Unified",
+  "diff.split": "Split"
 }
