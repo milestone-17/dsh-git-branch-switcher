@@ -1,3 +1,23 @@
+# v0.7.9 — 正确注册右侧边栏标签页类型
+
+## 改进 / Improvements
+
+- **按 DSH 规范注册右侧边栏标签页类型**：参考 `dsh-client-ui-sidebar-right` 的实现，除了注册 `sidebar.right.pane.tab` / `sidebar.right.pane.tab.title` 插槽外，还通过 `ctx.sidebarRightTabs.register()` 注册标签页类型，让 DSH 的右侧边栏控制器真正识别「Git Diff」标签页。
+- **点击「查看变更」调用 `sidebarRight.openTab`**：不再只调用 `layout.openRightbar`，而是直接调用 `ctx.sidebarRight.openTab(kind, { revealIfOpened: true })`，确保右侧边栏打开并自动聚焦到 Git Diff 标签页。
+- **保留多重回退**：没有 `sidebarRight` 时回退到 `layout.openRightbar` + 浮层面板；没有 `layout` 时回退到纯浮层面板。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.8 — diff 视图接入 DSH 右侧边栏
 
 ## 改进 / Improvements

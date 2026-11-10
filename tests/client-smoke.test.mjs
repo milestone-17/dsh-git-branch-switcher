@@ -378,6 +378,18 @@ const scope = {
 	layout: {
 		openRightbar() {},
 		closeRightbar() {}
+	},
+	sidebarRight: {
+		openTab() {},
+		openResource() {}
+	},
+	sidebarRightTabs: {
+		register(definition) {
+			return () => {};
+		}
+	},
+	effect(fn, label) {
+		return fn();
 	}
 };
 const ctx = {
@@ -389,7 +401,7 @@ const ctx = {
 		}
 	},
 	inject(keys, callback) {
-		assert.deepEqual(keys, ["remote.branchSwitcher", "slots", "layout"]);
+		assert.deepEqual(keys, ["remote.branchSwitcher", "slots", "layout", "sidebarRight", "sidebarRightTabs"]);
 		callback(scope);
 		return {
 			then: (onFulfilled) => Promise.resolve().then(onFulfilled),
@@ -502,6 +514,18 @@ const panelNode = () => findByClass(surface.tree(), "dshgbs-menu")[0];
 		layout: {
 			openRightbar() {},
 			closeRightbar() {}
+		},
+		sidebarRight: {
+			openTab() {},
+			openResource() {}
+		},
+		sidebarRightTabs: {
+			register(definition) {
+				return () => {};
+			}
+		},
+		effect(fn, label) {
+			return fn();
 		}
 	};
 	await portalExports.apply({

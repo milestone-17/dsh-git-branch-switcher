@@ -1737,7 +1737,7 @@ window.__ModuleLoader__.load({
 
 		/** Composer chip: shows the current branch, opens the switcher menu, and mirrors model-selection's popover behavior. */
 		function Chip(props) {
-			const { sessionId, call, layout } = props;
+			const { sessionId, call, layout, sidebarRight, sidebarRightTabs, diffTabKind } = props;
 			const [status, setStatus] = React.useState(() => statusMemory.get(sessionId));
 			const [open, setOpen] = React.useState(false);
 			const [busy, setBusy] = React.useState(false);
@@ -2490,15 +2490,38 @@ window.__ModuleLoader__.load({
 						disabled: busy,
 						onClick: () => {
 							setOpen(false);
-							if (layout !== void 0 && layout !== null) {
+							if (sidebarRight !== void 0 && sidebarRight !== null && diffTabKind !== void 0) {
+								try {
+									sidebarRight.openTab(diffTabKind, { revealIfOpened: true });
+								} catch (cause) {
+									console.warn("[git-branch-switcher] openTab failed", cause);
+									if (layout !== void 0 && layout !== null) {
+										try {
+											layout.openRightbar(true, false);
+										} catch (cause2) {
+											console.warn("[git-branch-switcher] openRightbar failed", cause2);
+										}
+									}
+									setMode("diff");
+									setPanelMode(true);
+									try {
+										localStorage.setItem("dsh-gbs-panel-mode", "1");
+									} catch {}
+									loadDiff("all");
+								}
+							} else if (layout !== void 0 && layout !== null) {
 								try {
 									layout.openRightbar(true, false);
 								} catch (cause) {
 									console.warn("[git-branch-switcher] openRightbar failed", cause);
 								}
+								setMode("diff");
+								setPanelMode(true);
+								try {
+									localStorage.setItem("dsh-gbs-panel-mode", "1");
+								} catch {}
+								loadDiff("all");
 							} else {
-								// Fallback for hosts without the layout service: show the
-								// diff in the floating panel.
 								setMode("diff");
 								setPanelMode(true);
 								try {
@@ -2918,7 +2941,7 @@ window.__ModuleLoader__.load({
 		async function apply(ctx) {
 			insertStyles();
 			const unmountRemote = await ctx.remote.$mount(TYPERT_REMOTE);
-			const scope = ctx.inject(["remote.branchSwitcher", "slots", "layout"], (child) => {
+			const scope = ctx.inject(["remote.branchSwitcher", "slots", "layout", "sidebarRight", "sidebarRightTabs"], (child) => {
 				const invoke = async (method, input) => {
 					const result = await child.remote.branchSwitcher[method](input);
 					if (result !== null && typeof result === "object" && "ok" in result) {
@@ -2932,6 +2955,16 @@ window.__ModuleLoader__.load({
 					return result;
 				};
 				const layout = child.layout;
+				const sidebarRight = child.sidebarRight;
+				const sidebarRightTabs = child.sidebarRightTabs;
+				const DIFF_TAB_KIND = "git-branch-switcher-diff";
+				const DIFF_TAB_ID = "git-branch-switcher-diff";
+				child.effect(() => sidebarRightTabs.register({
+					id: DIFF_TAB_ID,
+					kind: DIFF_TAB_KIND,
+					priority: "extension",
+					title: () => t("diff.title")
+				}), "git-branch-switcher: diff tab type");
 				child.slots.inject(SLOT_NAME, () => child.slots.register({
 					name: SLOT_NAME,
 					id: SLOT_ID,
@@ -2939,13 +2972,16 @@ window.__ModuleLoader__.load({
 					inject: (sessionId) => ({
 						sessionId,
 						call: invoke,
-						layout
+						layout,
+						sidebarRight,
+						sidebarRightTabs,
+						diffTabKind: DIFF_TAB_KIND
 					})
 				}, (props) => h(ChipErrorBoundary, null, h(Chip, props))));
 				child.slots.inject("sidebar.right.pane.tab", () => child.slots.register({
 					name: "sidebar.right.pane.tab",
-					id: "git-branch-switcher-diff",
-					key: "git-branch-switcher-diff",
+					id: "git-branch-switcher-diff-body",
+					key: DIFF_TAB_KIND,
 					inject: (sessionId) => ({
 						sessionId,
 						call: invoke
@@ -2954,7 +2990,7 @@ window.__ModuleLoader__.load({
 				child.slots.inject("sidebar.right.pane.tab.title", () => child.slots.register({
 					name: "sidebar.right.pane.tab.title",
 					id: "git-branch-switcher-diff-title",
-					key: "git-branch-switcher-diff"
+					key: DIFF_TAB_KIND
 				}, DiffTabTitle));
 			});
 			try {
