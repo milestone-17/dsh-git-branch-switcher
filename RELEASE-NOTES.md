@@ -1,3 +1,22 @@
+# v0.7.7 — 捕获 chip 渲染崩溃并显示错误图标
+
+## 修复 / Fixes
+
+- **添加 React 错误边界**：v0.7.6 图标仍会消失，说明 Chip 组件在渲染时抛出了未被捕获的异常。现在在 `conversation.input.left` 插槽外包裹 `ChipErrorBoundary`，一旦 Chip 渲染崩溃，会显示一个红色「Git?」图标而不是空白，并把完整错误打印到控制台。
+- **点击错误图标可重试**：点击红标图标会清空错误状态并重新渲染。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.7.6 — 修复重启后插件图标消失的问题
 
 ## 修复 / Fixes

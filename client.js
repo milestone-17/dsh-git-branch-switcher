@@ -1586,6 +1586,35 @@ window.__ModuleLoader__.load({
 		//#region chip
 		const SLOT_NAME = "conversation.input.left";
 		const SLOT_ID = "git-branch-switcher";
+		/**
+		 * Catch render-time errors in the chip so a crash does not silently blank
+		 * the composer. The error message is shown on the chip and logged to the
+		 * console for diagnosis.
+		 */
+		class ChipErrorBoundary extends React.Component {
+			constructor(props) {
+				super(props);
+				this.state = { error: null };
+			}
+			static getDerivedStateFromError(error) {
+				return { error };
+			}
+			componentDidCatch(error, info) {
+				console.error("[git-branch-switcher] chip render error", error, info);
+			}
+			render() {
+				if (this.state.error !== null) {
+					const message = String(this.state.error?.message ?? this.state.error);
+					return h("button", {
+						type: "button",
+						className: `${BASE}-chip ${BASE}-chip-error`,
+						title: message,
+						onClick: () => this.setState({ error: null })
+					}, h(BranchIcon, null), h("span", { className: `${BASE}-label` }, t("chip.error")));
+				}
+				return this.props.children;
+			}
+		}
 		/** Last known status per session, kept across slot remounts so switching conversations renders instantly. */
 		const statusMemory = new Map();
 		/**
@@ -2840,7 +2869,7 @@ window.__ModuleLoader__.load({
 						sessionId,
 						call: invoke
 					})
-				}, Chip));
+				}, (props) => h(ChipErrorBoundary, null, h(Chip, props))));
 			});
 			try {
 				await scope;

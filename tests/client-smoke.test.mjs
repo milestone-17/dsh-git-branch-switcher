@@ -85,10 +85,26 @@ function createReactSurface() {
 			if (ref !== void 0 && ref !== null && typeof ref === "object") ref.current = node;
 			// Presentational components are expanded right away, the way React
 			// would render them, so the tree shows the elements they return.
-			if (typeof type === "function") return type({ ...node.props, children: node.children });
+			if (typeof type === "function") {
+				const isClass = typeof type.prototype?.render === "function" || type.prototype instanceof React.Component;
+				const instance = isClass
+					? new type({ ...node.props, children: node.children })
+					: type({ ...node.props, children: node.children });
+				return isClass ? instance.render() : instance;
+			}
 			return node;
 		},
 		Fragment: "fragment",
+		Component: class Component {
+			constructor(props) {
+				this.props = props;
+				this.state = {};
+			}
+			setState(next) {
+				const value = typeof next === "function" ? next(this.state) : next;
+				this.state = { ...this.state, ...value };
+			}
+		},
 		useState: (initial) => {
 			const index = cursor;
 			cursor += 1;
