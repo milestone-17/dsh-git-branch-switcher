@@ -17,6 +17,13 @@
  *   comparison.
  * - `diff`: compare two snapshots (or a snapshot against HEAD) and return the
  *   file list and unified diff patch.
+ * - `messageSnapshots`: list the user messages that have before/after snapshots.
+ * - `diffMessage`: diff the changes a single user message produced.
+ *
+ * The service also watches the agent turn lifecycle: it captures a "before"
+ * snapshot when a user message enters a step and an "after" snapshot when the
+ * turn closes, so the message-scoped diff always has a baseline to compare
+ * against without the user doing anything.
  * - `push`: stage a chosen subset of changes, commit them with a supplied
  *   message, and push to the upstream remote branch, establishing it on the way.
  * - `merge`: merge a source branch into a target branch and restore the branch
@@ -151,7 +158,7 @@ async function runGitEnv(ctx, cwd, args, env, signal) {
 	const handle = subprocess.spawn({
 		argv: [git, ...args],
 		cwd,
-		env,
+		env: { ...process.env, ...env },
 		stdio: { stdout: { maxBytes: MAX_GIT_OUTPUT_BYTES }, stderr: { maxBytes: MAX_GIT_OUTPUT_BYTES } },
 		graceMs: 1000,
 		signal
@@ -164,6 +171,33 @@ async function runGitEnv(ctx, cwd, args, env, signal) {
 	};
 }
 
+/**
+ * Read a short display title out of a user message, so the message selector
+ * can name each message instead of showing an opaque id.
+ *
+ * The message body may be plain text or a list of content blocks; both shapes
+ * are flattened to their first readable text and trimmed to one line.
+ * @param message - The user message to describe.
+ * @returns A short title, or undefined when the message carries no text.
+ */
+function messageTitle(message) {
+	const parts = [];
+	const push = (value) => {
+		if (typeof value === "string" && value.trim() !== "") parts.push(value.trim());
+	};
+	push(message?.text);
+	push(message?.content);
+	if (Array.isArray(message?.content)) {
+		for (const block of message.content) {
+			if (typeof block === "string") push(block);
+			else if (block?.type === "text") push(block.text);
+		}
+	}
+	const text = parts.join(" ").replace(/\s+/gu, " ").trim();
+	if (text === "") return void 0;
+	return text.length > 60 ? `${text.slice(0, 60)}…` : text;
+}
+
 export default class BranchSwitcherService extends TypertRemoteService {
 	static inject = ["subprocess", "sessionController", "workingDirectory"];
 
@@ -174,8 +208,106 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		this.statusCache = new Map();
 		/** @type {Map<string, {at: number, value: string}>} session -> repository root cache, skipping agent resolution on the hot path. */
 		this.toplevelCache = new Map();
-		/** @type {Map<string, Array<{id: string, at: number, tree: string, head: string}>>} session -> rolling snapshot history for diff view. */
+		/** @type {Map<string, Array<{id: string, at: number, tree: string, head: string, label?: string, messageId?: string, phase?: string}>>} session -> rolling snapshot history for diff view. */
 		this.snapshots = new Map();
+		/** @type {Map<string, {turn: number, messageIds: string[]}>} session -> user messages that entered the open turn, so the closing snapshot knows what to close. */
+		this.turnMessages = new Map();
+		this.subscribeTurnSnapshots();
+	}
+
+	/**
+	 * Capture a "before" snapshot when a user message enters a step and an
+	 * "after" snapshot when the turn closes, so the message-scoped diff always
+	 * has a baseline to compare against.
+	 *
+	 * The pre-step waterfall is awaited before the step runs, so the baseline is
+	 * captured before any tool can touch the tree. The turn-stopping event is
+	 * awaited before the boundary commits, so the closing snapshot reflects the
+	 * finished work.
+	 * @returns Nothing.
+	 */
+	subscribeTurnSnapshots() {
+		const ctx = this.ctx;
+		if (ctx === void 0 || typeof ctx.on !== "function") return;
+		ctx.on("agent/pre-step", async (payload, next) => {
+			const decision = await next();
+			try {
+				const messages = decision?.kind === "enter" && Array.isArray(decision.messages) ? decision.messages : [];
+				const sessionId = payload?.agent?.id;
+				if (typeof sessionId !== "string" || sessionId === "") return decision;
+				const ids = [];
+				const titles = [];
+				for (const message of messages) {
+					const id = message?.id;
+					if (typeof id === "string" && id !== "") ids.push(id);
+					titles.push(messageTitle(message));
+				}
+				if (ids.length === 0) return decision;
+				const turn = typeof payload?.turn === "number" ? payload.turn : 0;
+				const known = this.turnMessages.get(sessionId);
+				// A turn keeps the union of its user messages so the closing
+				// snapshot covers the whole turn, not just its last step.
+				const messageIds = known?.turn === turn ? [...new Set([...known.messageIds, ...ids])] : [...new Set(ids)];
+				this.turnMessages.set(sessionId, { turn, messageIds });
+				// Only the first step of a turn owns the baseline: later steps run
+				// against the same working tree and would capture a moved baseline.
+				for (const [index, messageId] of ids.entries()) {
+					if (this.hasBeforeSnapshot(sessionId, messageId)) continue;
+					await this.captureSnapshot(sessionId, { messageId, phase: "before", label: titles[index] });
+				}
+			} catch {
+				// A failed baseline must never block the conversation.
+			}
+			return decision;
+		});
+		ctx.on("agent/turn-stopping", async (payload) => {
+			try {
+				const sessionId = payload?.agent?.id;
+				if (typeof sessionId !== "string" || sessionId === "") return;
+				const tracked = this.turnMessages.get(sessionId);
+				this.turnMessages.delete(sessionId);
+				if (tracked === void 0) return;
+				for (const messageId of tracked.messageIds) {
+					await this.captureSnapshot(sessionId, { messageId, phase: "after", label: messageId });
+				}
+			} catch {
+				// A failed closing snapshot must never block the turn boundary.
+			}
+		});
+	}
+
+	/**
+	 * Whether the session already holds a "before" snapshot for the message.
+	 * @param sessionId - Session identity.
+	 * @param messageId - User message identity.
+	 * @returns True when a before snapshot exists.
+	 */
+	hasBeforeSnapshot(sessionId, messageId) {
+		const list = this.snapshots.get(sessionId) ?? [];
+		return list.some((entry) => entry.messageId === messageId && entry.phase === "before");
+	}
+
+	/**
+	 * Capture a working-tree snapshot and file it under a message when the
+	 * request names one.
+	 * @param sessionId - Session identity.
+	 * @param options - Optional message id, phase, and label for the snapshot.
+	 * @param signal - Cancellation signal.
+	 * @returns The snapshot id and timestamp, or undefined when the session has no repository.
+	 */
+	async captureSnapshot(sessionId, options = {}, signal) {
+		try {
+			const result = await this.snapshot({
+				sessionId,
+				label: options.label,
+				messageId: options.messageId,
+				phase: options.phase
+			}, signal);
+			return result;
+		} catch {
+			// No repository, or git refused: the message simply has no baseline.
+			return void 0;
+		}
 	}
 
 	/**
@@ -436,9 +568,14 @@ export default class BranchSwitcherService extends TypertRemoteService {
 			const tree = treeResult.stdout.trim();
 			const id = `${tree}:${head}`;
 			const list = this.snapshots.get(request.sessionId) ?? [];
-			list.push({ id, at: Date.now(), tree, head, label: request.label });
-			// Keep the last 32 snapshots per session to bound memory.
-			while (list.length > 32) list.shift();
+			const entry = { id, at: Date.now(), tree, head, label: request.label };
+			if (typeof request.messageId === "string" && request.messageId.length > 0) {
+				entry.messageId = request.messageId;
+				entry.phase = request.phase === "after" ? "after" : "before";
+			}
+			list.push(entry);
+			// Keep the last 200 snapshots per session to bound memory while supporting message-level diff.
+			while (list.length > 200) list.shift();
 			this.snapshots.set(request.sessionId, list);
 			return { snapshotId: id, at: list[list.length - 1].at };
 		} finally {
@@ -470,42 +607,65 @@ export default class BranchSwitcherService extends TypertRemoteService {
 		let files;
 		let patch;
 		if (toTree === "WORKTREE") {
-			// Use status --porcelain so untracked files are included in the list,
-			// then diff HEAD for the tracked-file patch and synthesize hunks for
-			// untracked text files.
-			const [statusResult, patchResult] = await Promise.all([
-				runGit(this.ctx, toplevel, ["status", "--porcelain", "-z"], signal),
-				runGit(this.ctx, toplevel, ["diff", ...(fromTree === "WORKTREE" ? [] : [fromTree])], signal)
-			]);
-			if (statusResult.exitCode !== 0) {
-				throw new RemoteError("branchSwitcher/diff-failed", gitMessage(statusResult, "git status failed"), {});
-			}
-			files = this.parseChanges(statusResult.stdout);
-			patch = patchResult.exitCode === 0 ? patchResult.stdout : "";
-			const UNTRACKED_PATCH_LIMIT = 100 * 1024;
-			for (const row of files) {
-				if (row.kind !== "untracked") continue;
-				const fullPath = path.join(toplevel, row.path);
-				let content;
-				try {
-					const stat = await fs.stat(fullPath);
-					if (!stat.isFile() || stat.size > UNTRACKED_PATCH_LIMIT) continue;
-					content = await fs.readFile(fullPath, "utf8");
-				} catch {
-					continue;
+			if (fromTree === "HEAD") {
+				// Use status --porcelain so untracked files are included in the list,
+				// then diff HEAD for the tracked-file patch and synthesize hunks for
+				// untracked text files.
+				const [statusResult, patchResult] = await Promise.all([
+					runGit(this.ctx, toplevel, ["status", "--porcelain", "-z"], signal),
+					runGit(this.ctx, toplevel, ["diff"], signal)
+				]);
+				if (statusResult.exitCode !== 0) {
+					throw new RemoteError("branchSwitcher/diff-failed", gitMessage(statusResult, "git status failed"), {});
 				}
-				const lines = content.split(/\r?\n/u);
-				// Ensure the content ends with a newline so the synthetic hunk
-				// matches git's usual output; if not, the last line is incomplete.
-				const hasTrailingNewline = content.length > 0 && content.endsWith("\n");
-				if (!hasTrailingNewline && lines.length > 0) lines.pop();
-				patch += `\ndiff --git a/${row.path} b/${row.path}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${row.path}\n@@ -0,0 +1,${lines.length} @@\n`;
-				for (const line of lines) {
-					patch += `+${line}\n`;
+				files = this.parseChanges(statusResult.stdout);
+				patch = patchResult.exitCode === 0 ? patchResult.stdout : "";
+				const UNTRACKED_PATCH_LIMIT = 100 * 1024;
+				for (const row of files) {
+					if (row.kind !== "untracked") continue;
+					const fullPath = path.join(toplevel, row.path);
+					let content;
+					try {
+						const stat = await fs.stat(fullPath);
+						if (!stat.isFile() || stat.size > UNTRACKED_PATCH_LIMIT) continue;
+						content = await fs.readFile(fullPath, "utf8");
+					} catch {
+						continue;
+					}
+					const lines = content.split(/\r?\n/u);
+					// Ensure the content ends with a newline so the synthetic hunk
+					// matches git's usual output; if not, the last line is incomplete.
+					const hasTrailingNewline = content.length > 0 && content.endsWith("\n");
+					if (!hasTrailingNewline && lines.length > 0) lines.pop();
+					patch += `\ndiff --git a/${row.path} b/${row.path}\nnew file mode 100644\nindex 0000000..0000000\n--- /dev/null\n+++ b/${row.path}\n@@ -0,0 +1,${lines.length} @@\n`;
+					for (const line of lines) {
+						patch += `+${line}\n`;
+					}
+					if (!hasTrailingNewline && content.length > 0) {
+						patch += `\\ No newline at end of file\n`;
+					}
 				}
-				if (!hasTrailingNewline && content.length > 0) {
-					patch += `\\ No newline at end of file\n`;
+			} else {
+				// Diff a specific tree against the working tree so message-scoped diffs
+				// report only changes relative to the baseline tree, not relative to HEAD.
+				const [nameStatus, patchResult] = await Promise.all([
+					runGit(this.ctx, toplevel, ["diff", "--name-status", fromTree], signal),
+					runGit(this.ctx, toplevel, ["diff", fromTree], signal)
+				]);
+				if (nameStatus.exitCode !== 0) {
+					throw new RemoteError("branchSwitcher/diff-failed", gitMessage(nameStatus, "git diff failed"), {});
 				}
+				files = [];
+				for (const line of nameStatus.stdout.split(/\r?\n/u)) {
+					if (line.trim().length === 0) continue;
+					const parts = line.split("\t");
+					const status = parts[0];
+					const kind = status === "A" ? "added" : status === "D" ? "deleted" : status.startsWith("R") ? "renamed" : "modified";
+					const entry = { kind, path: parts[1] };
+					if (kind === "renamed" && parts.length > 2) entry.previousPath = parts[2];
+					files.push(entry);
+				}
+				patch = patchResult.exitCode === 0 ? patchResult.stdout : "";
 			}
 		} else {
 			const worktreeArgs = (tree) => tree === "WORKTREE" ? [] : [tree];
@@ -533,6 +693,76 @@ export default class BranchSwitcherService extends TypertRemoteService {
 			patch = patchResult.exitCode === 0 ? patchResult.stdout : "";
 		}
 		return { files, patch };
+	}
+
+	/**
+	 * Query snapshots grouped by session and message. Returns sessions and the
+	 * user messages that have before/after snapshot pairs, including display
+	 * text and snapshot ids.
+	 * @param request - Request object carrying the session identity.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns Sessions with their messages and before/after snapshot ids.
+	 */
+	async messageSnapshots(request, signal) {
+		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
+		const list = this.snapshots.get(request.sessionId) ?? [];
+		const byMessage = new Map();
+		for (const entry of list) {
+			if (typeof entry.messageId !== "string") continue;
+			let group = byMessage.get(entry.messageId);
+			if (group === undefined) {
+				group = { before: void 0, after: void 0, phases: new Set() };
+				byMessage.set(entry.messageId, group);
+			}
+			group.phases.add(entry.phase);
+			if (entry.phase === "before" && (group.before === void 0 || entry.at < group.before.at)) {
+				group.before = entry;
+			}
+			if (entry.phase === "after" && (group.after === void 0 || entry.at > group.after.at)) {
+				group.after = entry;
+			}
+		}
+		const messages = [];
+		for (const [messageId, group] of byMessage) {
+			if (group.before === void 0) continue;
+			messages.push({
+				messageId,
+				title: group.before.label || messageId,
+				beforeId: group.before.id,
+				afterId: group.after?.id ?? null,
+				at: group.before.at
+			});
+		}
+		messages.sort((a, b) => a.at - b.at);
+		return { sessionId: request.sessionId, toplevel, messages };
+	}
+
+	/**
+	 * Diff the changes produced by a single user message. Compares the message's
+	 * before snapshot with its after snapshot, or with the working tree if no
+	 * after snapshot exists.
+	 * @param request - Request object carrying the session identity and message id.
+	 * @param signal - Cancellation signal of the Remote call.
+	 * @returns File list with change kinds and the unified diff patch.
+	 */
+	async diffMessage(request, signal) {
+		const toplevel = await this.requireToplevelCached(request.sessionId, signal);
+		const list = this.snapshots.get(request.sessionId) ?? [];
+		let before;
+		let after;
+		for (const entry of list) {
+			if (entry.messageId !== request.messageId) continue;
+			if (entry.phase === "before" && (before === void 0 || entry.at < before.at)) {
+				before = entry;
+			}
+			if (entry.phase === "after" && (after === void 0 || entry.at > after.at)) {
+				after = entry;
+			}
+		}
+		if (before === void 0) {
+			throw new RemoteError("branchSwitcher/message-not-found", "no before snapshot found for the requested message; it may predate the plugin or the session may not be in a git repository", {});
+		}
+		return this.diff({ sessionId: request.sessionId, from: before.id, to: after?.id ?? "WORKTREE" }, signal);
 	}
 
 	/**
@@ -1134,3 +1364,5 @@ markRemote(BranchSwitcherService.prototype, "stashList");
 markRemote(BranchSwitcherService.prototype, "stash");
 markRemote(BranchSwitcherService.prototype, "stashApply");
 markRemote(BranchSwitcherService.prototype, "stashDrop");
+markRemote(BranchSwitcherService.prototype, "messageSnapshots");
+markRemote(BranchSwitcherService.prototype, "diffMessage");

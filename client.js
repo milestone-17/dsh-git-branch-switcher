@@ -342,11 +342,15 @@ window.__ModuleLoader__.load({
 		});
 		const $snapshot_request = () => zod.z.object({
 			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
-			"label": zod.z.string().optional().describe("Optional label for the snapshot.")
+			"label": zod.z.string().optional().describe("Optional label for the snapshot."),
+			"messageId": zod.z.string().optional().describe("Optional user message id for message-scoped diff."),
+			"phase": zod.z.enum(["before", "after"]).optional().describe("Phase of the snapshot relative to the message: before the user sends it or after the model responds.")
 		});
 		const $snapshot_request_strict = () => zod.z.strictObject({
 			"sessionId": zod.z.string(),
-			"label": zod.z.string().optional()
+			"label": zod.z.string().optional(),
+			"messageId": zod.z.string().optional(),
+			"phase": zod.z.enum(["before", "after"]).optional()
 		});
 		const $snapshot_result = () => $snapshot_result$value ??= zod.z.object({
 			"snapshotId": zod.z.string().describe("Opaque snapshot identifier."),
@@ -363,6 +367,32 @@ window.__ModuleLoader__.load({
 			"from": zod.z.string(),
 			"to": zod.z.string()
 		});
+		const $message_snapshots_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation.")
+		});
+		const $message_snapshots_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string()
+		});
+		const $diff_message_request = () => zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity of the calling conversation."),
+			"messageId": zod.z.string().describe("User message id to diff.")
+		});
+		const $diff_message_request_strict = () => zod.z.strictObject({
+			"sessionId": zod.z.string(),
+			"messageId": zod.z.string()
+		});
+		const $message_snapshots_result = () => $message_snapshots_result$value ??= zod.z.object({
+			"sessionId": zod.z.string().describe("Session identity."),
+			"toplevel": zod.z.string().describe("Repository root path."),
+			"messages": zod.z.array(zod.z.object({
+				"messageId": zod.z.string().describe("User message id."),
+				"title": zod.z.string().describe("Display text for the message."),
+				"beforeId": zod.z.string().describe("Snapshot id before the message."),
+				"afterId": zod.z.string().nullable().describe("Snapshot id after the model response, or null."),
+				"at": zod.z.number().describe("Timestamp of the before snapshot.")
+			})).describe("Messages with before/after snapshot pairs.")
+		});
+		let $message_snapshots_result$value;
 		const $diff_result = () => $diff_result$value ??= zod.z.object({
 			"files": zod.z.array(zod.z.object({
 				"path": zod.z.string(),
@@ -455,6 +485,60 @@ window.__ModuleLoader__.load({
 					to: { type: "string" }
 				},
 				required: ["sessionId", "from", "to"],
+				additionalProperties: false
+			}
+		});
+		const messageSnapshotsRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MessageSnapshotsRequest",
+			create: $message_snapshots_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." }
+				},
+				required: ["sessionId"],
+				additionalProperties: true
+			}
+		});
+		const messageSnapshotsRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MessageSnapshotsRequest",
+			create: $message_snapshots_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" }
+				},
+				required: ["sessionId"],
+				additionalProperties: false
+			}
+		});
+		const diffMessageRequestCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffMessageRequest",
+			create: $diff_message_request,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string", description: "Session identity of the calling conversation." },
+					messageId: { type: "string", description: "User message id to diff." }
+				},
+				required: ["sessionId", "messageId"],
+				additionalProperties: true
+			}
+		});
+		const diffMessageRequestStrictCodec = () => ({
+			mode: "strict",
+			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffMessageRequest",
+			create: $diff_message_request_strict,
+			jsonSchema: {
+				type: "object",
+				properties: {
+					sessionId: { type: "string" },
+					messageId: { type: "string" }
+				},
+				required: ["sessionId", "messageId"],
 				additionalProperties: false
 			}
 		});
@@ -837,7 +921,7 @@ window.__ModuleLoader__.load({
 					invocation: { kind: "direct" },
 					parameters: [{
 						name: "request",
-						description: "request object carrying the session identity and an optional label.",
+						description: "request object carrying the session identity, an optional label, and optional message id/phase for message-scoped diff.",
 						source: "json",
 						codec: snapshotRequestCodec(),
 						strictCodec: snapshotRequestStrictCodec()
@@ -861,6 +945,46 @@ window.__ModuleLoader__.load({
 						source: "json",
 						codec: diffRequestCodec(),
 						strictCodec: diffRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffResult",
+						create: $diff_result,
+						description: "file list with change kinds and the unified diff patch.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/messageSnapshots": {
+					service: "branchSwitcher",
+					description: "List user messages that have before/after snapshots for message-scoped diff.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity.",
+						source: "json",
+						codec: messageSnapshotsRequestCodec(),
+						strictCodec: messageSnapshotsRequestStrictCodec()
+					}],
+					cancellation: { parameter: "signal" },
+					result: {
+						mode: "strict",
+						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MessageSnapshotsResult",
+						create: $message_snapshots_result,
+						description: "sessions and user messages with before/after snapshot ids.",
+						jsonSchema: { type: "object", additionalProperties: true }
+					}
+				},
+				"branchSwitcher/diffMessage": {
+					service: "branchSwitcher",
+					description: "Diff the changes produced by a single user message.",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "request",
+						description: "request object carrying the session identity and message id.",
+						source: "json",
+						codec: diffMessageRequestCodec(),
+						strictCodec: diffMessageRequestStrictCodec()
 					}],
 					cancellation: { parameter: "signal" },
 					result: {
@@ -1116,6 +1240,11 @@ window.__ModuleLoader__.load({
 			"diff.empty": "No changes to show.",
 			"diff.unified": "Unified",
 			"diff.split": "Split",
+			"diff.messages": "Messages",
+			"diff.allChanges": "All changes",
+			"diff.selectMessage": "Select a message",
+			"diff.noMessages": "No message snapshots",
+			"diff.openMessageDiff": "View changes for this message",
 			"gitPanel.title": "Git",
 			"gitPanel.branches": "Branches",
 			"gitPanel.push": "Push",
@@ -1140,7 +1269,8 @@ window.__ModuleLoader__.load({
 			"error.failed": "Branch operation failed: {message}",
 			"error.fetch": "Fetch failed: {message}",
 			"error.fetchStaleHost": "The running host is an older version without the fetch method. Restart DeepSeek Harness to enable remote syncing.",
-			"error.diffFailed": "Diff failed: {message}"
+			"error.diffFailed": "Diff failed: {message}",
+			"error.messageDiffUnavailable": "This message has no recorded snapshot, showing all changes instead: {message}"
 		};
 		const zh = {
 			"chip.detached": "游离 HEAD",
@@ -1241,6 +1371,11 @@ window.__ModuleLoader__.load({
 			"diff.empty": "没有可显示的变更。",
 			"diff.unified": "上下对比",
 			"diff.split": "左右对比",
+			"diff.messages": "消息",
+			"diff.allChanges": "全部变更",
+			"diff.selectMessage": "选择消息",
+			"diff.noMessages": "没有消息快照",
+			"diff.openMessageDiff": "查看此消息产生的变更",
 			"gitPanel.title": "Git",
 			"gitPanel.branches": "分支",
 			"gitPanel.push": "推送",
@@ -1265,7 +1400,8 @@ window.__ModuleLoader__.load({
 			"error.failed": "分支操作失败：{message}",
 			"error.fetch": "同步远端分支失败：{message}",
 			"error.fetchStaleHost": "当前运行的宿主版本较旧，还没有同步能力。请完全退出并重启 DeepSeek Harness 应用后再试。",
-			"error.diffFailed": "Diff 加载失败：{message}"
+			"error.diffFailed": "Diff 加载失败：{message}",
+			"error.messageDiffUnavailable": "该消息没有记录快照，已改为显示全部变更：{message}"
 		};
 		const isChinese = () => /^zh\b/i.test(navigator.language ?? "");
 		const dictionary = () => isChinese() ? zh : en;
@@ -1460,7 +1596,13 @@ window.__ModuleLoader__.load({
 .${BASE}-merge-arrow-wrap{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--dsw-alias-bg-pressed,rgba(127,127,127,.1));color:var(--dsw-alias-label-secondary,#666);box-shadow:0 2px 6px rgba(0,0,0,.06);flex-shrink:0}
 .${BASE}-merge-arrow{width:18px;height:18px}
 .${BASE}-merge-button{margin-top:8px;padding:10px 16px;font-size:13px;font-weight:600;border-radius:10px}
+.${BASE}-diff-scope{margin-bottom:8px}
+.${BASE}-diff-scope .${BASE}-select{width:100%}
 .${BASE}-diff-mode-button{margin-left:8px;padding:2px 8px;font-size:11px}
+.${BASE}-message-action{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:4px;padding:0;border:none;border-radius:4px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.${BASE}-message-action:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.${BASE}-panel-icon{display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:0;border:none;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.${BASE}-panel-icon:hover{color:var(--dsw-alias-label-primary)}
 .${BASE}-diff-split{display:flex;flex-direction:column;overflow:auto;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace);font-size:12px;position:relative}
 .${BASE}-diff-split-header{display:grid;position:sticky;top:0;background:var(--dsw-alias-bg-base,#fff);border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.13));z-index:1}
 .${BASE}-diff-split-header span{padding:4px 8px;font-weight:600;color:var(--dsw-alias-label-secondary,#666)}
@@ -1485,9 +1627,9 @@ window.__ModuleLoader__.load({
 		//#endregion
 
 		//#region icons
-		const BranchIcon = () => h("svg", {
-			width: 14,
-			height: 14,
+		const BranchIcon = ({ size = 14 }) => h("svg", {
+			width: size,
+			height: size,
 			viewBox: "0 0 16 16",
 			fill: "none",
 			"aria-hidden": "true",
@@ -1918,9 +2060,52 @@ window.__ModuleLoader__.load({
 		 * as the composer chip menu, so the sidebar is an enlarged, persistent
 		 * view of the git workflow.
 		 */
+		/**
+		 * Shared in-memory selection store so entry points outside the right sidebar
+		 * (assistant message actions, conversation view tab, etc.) can tell GitPanel
+		 * which message to diff and which tab to open.
+		 */
+		const diffSelectionStore = {
+			selections: new Map(),
+			listeners: new Set(),
+			set(sessionId, messageId, tab) {
+				this.selections.set(sessionId, { messageId, tab, at: Date.now() });
+				for (const listener of this.listeners) listener();
+			},
+			get(sessionId) {
+				return this.selections.get(sessionId);
+			},
+			subscribe(listener) {
+				this.listeners.add(listener);
+				return () => this.listeners.delete(listener);
+			}
+		};
+		const useDiffSelection = (sessionId) => {
+			const [selection, setSelection] = React.useState(() => diffSelectionStore.get(sessionId));
+			React.useEffect(() => {
+				const check = () => setSelection(diffSelectionStore.get(sessionId));
+				check();
+				const unsubscribe = diffSelectionStore.subscribe(check);
+				return unsubscribe;
+			}, [sessionId]);
+			return selection;
+		};
+
 		const GitPanel = (props) => {
 			const { sessionId, call } = props;
+			const pendingSelection = useDiffSelection(sessionId);
 			const [activeTab, setActiveTab] = React.useState("branches");
+			const [selectedMessage, setSelectedMessage] = React.useState(() => pendingSelection?.messageId ?? "");
+			// An external entry point can ask for a specific tab and message.
+			React.useEffect(() => {
+				if (pendingSelection?.tab === void 0) return;
+				if (pendingSelection.tab !== activeTab) setActiveTab(pendingSelection.tab);
+			}, [pendingSelection, activeTab]);
+			React.useEffect(() => {
+				const messageId = pendingSelection?.messageId;
+				if (messageId === void 0 || messageId === selectedMessage) return;
+				setSelectedMessage(messageId);
+			}, [pendingSelection, selectedMessage]);
 			const [status, setStatus] = React.useState(void 0);
 			const [changes, setChanges] = React.useState(void 0);
 			const [busy, setBusy] = React.useState(false);
@@ -2058,6 +2243,7 @@ window.__ModuleLoader__.load({
 			// --- diff tab ---
 			const [diffFiles, setDiffFiles] = React.useState(void 0);
 			const [diffPatch, setDiffPatch] = React.useState("");
+			const [messageSnapshots, setMessageSnapshots] = React.useState(void 0);
 			const loadDiff = React.useCallback(async () => {
 				try {
 					const value = await call("diff", { sessionId, from: "HEAD", to: "WORKTREE" });
@@ -2067,7 +2253,46 @@ window.__ModuleLoader__.load({
 					setError(t("error.diffFailed", { message: String(cause?.message ?? cause) }));
 				}
 			}, [call, sessionId]);
-			React.useEffect(() => { if (activeTab === "diff") loadDiff(); }, [activeTab, loadDiff]);
+			const loadMessageSnapshots = React.useCallback(async () => {
+				try {
+					const value = await call("messageSnapshots", { sessionId });
+					setMessageSnapshots(value);
+				} catch (cause) {
+					console.warn("[git-branch-switcher] GitPanel messageSnapshots failed", cause);
+				}
+			}, [call, sessionId]);
+			React.useEffect(() => {
+				if (activeTab !== "diff") return;
+				loadMessageSnapshots();
+				if (selectedMessage === "") {
+					loadDiff();
+				} else {
+					call("diffMessage", { sessionId, messageId: selectedMessage }).then((value) => {
+						setDiffFiles(value.files);
+						setDiffPatch(value.patch);
+						setError(void 0);
+					}).catch((cause) => {
+						// The message may predate this plugin's snapshots, or the
+						// session may not be in a repository. Fall back to the full
+						// working-tree diff instead of leaving the panel broken.
+						setSelectedMessage("");
+						setError(t("error.messageDiffUnavailable", { message: String(cause?.message ?? cause) }));
+						loadDiff();
+					});
+				}
+			}, [activeTab, selectedMessage, call, sessionId, loadDiff, loadMessageSnapshots]);
+			const messageOptions = (messageSnapshots?.messages ?? []).map((message) => h("option", { key: message.messageId, value: message.messageId }, message.title || message.messageId));
+			const diffScopeSelector = h("div", { className: `${BASE}-gitpanel-section ${BASE}-diff-scope` },
+				h("label", { className: `${BASE}-field` },
+					h("span", { className: `${BASE}-field-label` }, t("diff.messages")),
+					h("select", {
+						className: `${BASE}-select`,
+						value: selectedMessage,
+						onChange: (event) => setSelectedMessage(event.target.value)
+					},
+						h("option", { value: "" }, t("diff.allChanges")),
+						(messageSnapshots?.messages ?? []).length === 0 ? h("option", { value: "", disabled: true }, t("diff.noMessages")) : null,
+						messageOptions)));
 			// --- render helpers ---
 			const tabs = [
 				{ id: "branches", label: t("gitPanel.branches") },
@@ -2203,7 +2428,7 @@ window.__ModuleLoader__.load({
 			// diff content
 			const diffContent = diffFiles === void 0
 				? h("div", { className: `${BASE}-empty` }, t("diff.loading"))
-				: h(DiffViewer, { files: diffFiles, patch: diffPatch });
+				: h("div", { className: `${BASE}-gitpanel-section` }, diffScopeSelector, h(DiffViewer, { files: diffFiles, patch: diffPatch }));
 			const contentMap = {
 				branches: branchesContent,
 				create: createContent,
@@ -3442,6 +3667,59 @@ window.__ModuleLoader__.load({
 		};
 		const DiffTabTitle = () => h("span", { className: `${BASE}-rightbar-title` }, t("diff.title"));
 		const GitPanelTitle = () => h("span", { className: `${BASE}-rightbar-title` }, t("gitPanel.title"));
+		const GIT_PANEL_KIND_GLOBAL = "git-branch-switcher";
+
+		/**
+		 * Small icon button rendered on finalized assistant messages. Clicking it
+		 * opens the Git panel and selects the current message in the diff scope
+		 * selector so the user sees only the changes produced by this response.
+		 */
+		function MessageDiffAction(props) {
+			const { sessionId, messageId, sidebarRight } = props;
+			if (typeof messageId !== "string" || messageId === "") return null;
+			const title = t("diff.openMessageDiff");
+			const onClick = React.useCallback(() => {
+				diffSelectionStore.set(sessionId, messageId, "diff");
+				if (sidebarRight !== void 0 && sidebarRight !== null) {
+					try {
+						sidebarRight.openTab(GIT_PANEL_KIND_GLOBAL, { revealIfOpened: true });
+					} catch (cause) {
+						console.warn("[git-branch-switcher] openTab from message action failed", cause);
+					}
+				}
+			}, [sessionId, messageId, sidebarRight]);
+			return h("button", {
+				type: "button",
+				className: `${BASE}-message-action`,
+				title,
+				"aria-label": title,
+				onClick
+			}, h(BranchIcon, { size: 14 }));
+		}
+
+		/**
+		 * Icon entry in the left sidebar panel list. Clicking it opens the Git panel.
+		 */
+		function PanelListIcon(props) {
+			const { size, sidebarRight } = props;
+			const title = t("gitPanel.title");
+			const onClick = React.useCallback(() => {
+				if (sidebarRight !== void 0 && sidebarRight !== null) {
+					try {
+						sidebarRight.openTab(GIT_PANEL_KIND_GLOBAL, { revealIfOpened: true });
+					} catch (cause) {
+						console.warn("[git-branch-switcher] openTab from panel list failed", cause);
+					}
+				}
+			}, [sidebarRight]);
+			return h("button", {
+				type: "button",
+				className: `${BASE}-panel-icon`,
+				title,
+				"aria-label": title,
+				onClick
+			}, h(BranchIcon, { size: typeof size === "number" ? size : 20 }));
+		}
 		//#endregion
 
 		//#region plugin
@@ -3472,11 +3750,10 @@ window.__ModuleLoader__.load({
 				const layout = child.layout;
 				const sidebarRight = child.sidebarRight;
 				const sidebarRightTabs = child.sidebarRightTabs;
-				const GIT_PANEL_KIND = "git-branch-switcher";
 				const GIT_PANEL_ID = "git-branch-switcher";
 				child.effect(() => sidebarRightTabs.register({
 					id: GIT_PANEL_ID,
-					kind: GIT_PANEL_KIND,
+					kind: GIT_PANEL_KIND_GLOBAL,
 					priority: "extension",
 					title: () => t("gitPanel.title")
 				}), "git-branch-switcher: git panel type");
@@ -3490,13 +3767,13 @@ window.__ModuleLoader__.load({
 						layout,
 						sidebarRight,
 						sidebarRightTabs,
-						gitPanelKind: GIT_PANEL_KIND
+						gitPanelKind: GIT_PANEL_KIND_GLOBAL
 					})
 				}, (props) => h(ChipErrorBoundary, null, h(Chip, props))));
 				child.slots.inject("sidebar.right.pane.tab", () => child.slots.register({
 					name: "sidebar.right.pane.tab",
 					id: "git-branch-switcher-body",
-					key: GIT_PANEL_KIND,
+					key: GIT_PANEL_KIND_GLOBAL,
 					inject: (sessionId) => ({
 						sessionId,
 						call: invoke
@@ -3505,8 +3782,34 @@ window.__ModuleLoader__.load({
 				child.slots.inject("sidebar.right.pane.tab.title", () => child.slots.register({
 					name: "sidebar.right.pane.tab.title",
 					id: "git-branch-switcher-title",
-					key: GIT_PANEL_KIND
+					key: GIT_PANEL_KIND_GLOBAL
 				}, GitPanelTitle));
+				child.slots.inject("conversation.chat.assistant-actions", () => child.slots.register({
+					name: "conversation.chat.assistant-actions",
+					id: "git-branch-switcher-message-diff",
+					order: 20,
+					locale: "git-branch-switcher",
+					inject: (sessionId) => ({
+						sessionId,
+						sidebarRight
+					})
+				}, MessageDiffAction));
+				child.slots.inject("sidebar.panellist", () => child.slots.register({
+					name: "sidebar.panellist",
+					id: "git-branch-switcher",
+					order: 20,
+					label: () => t("gitPanel.title"),
+					locale: "git-branch-switcher",
+					inject: () => ({ sidebarRight })
+				}, PanelListIcon));
+				child.slots.inject("conversation.view", () => child.slots.register({
+					name: "conversation.view",
+					id: "git-branch-switcher",
+					order: 20,
+					label: () => t("gitPanel.title"),
+					locale: "git-branch-switcher",
+					inject: (sessionId) => ({ sessionId, call: invoke })
+				}, GitPanel));
 			});
 			try {
 				await scope;

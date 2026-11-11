@@ -344,6 +344,9 @@ let registered;
 let chipComponent;
 let gitPanelComponent;
 let gitPanelTitleComponent;
+let messageActionComponent;
+let panelListComponent;
+let conversationViewComponent;
 const statusValue = { repository: true, current: "main", detached: false, branches: [{ name: "main", current: true }], dirtyLines: 0 };
 const scope = {
 	remote: {
@@ -354,7 +357,10 @@ const scope = {
 			changes: async () => ({ ok: true, value: { repository: true, files: [] } }),
 			snapshot: async () => ({ ok: true, value: { snapshotId: "tree:HEAD", at: Date.now() } }),
 			diff: async () => ({ ok: true, value: { files: [{ path: "a.txt", kind: "modified" }], patch: "@@ -1 +1 @@\n-old\n+new" } }),
+			messageSnapshots: async () => ({ ok: true, value: { sessionId: "session-panel", toplevel: "/repo", messages: [{ messageId: "msg-1", title: "first question", beforeId: "tree:before:HEAD", afterId: "tree:after:HEAD", at: Date.now() }] } }),
+			diffMessage: async () => ({ ok: true, value: { files: [{ path: "b.txt", kind: "added" }], patch: "@@ -0,0 +1 @@\n+hello" } }),
 			stash: async () => ({ ok: true, value: { stashed: true, ref: "stash@{0}" } }),
+			stashList: async () => ({ ok: true, value: { stashes: [] } }),
 			stashApply: async () => ({ ok: true, value: { applied: true, popped: true } }),
 			stashDrop: async () => ({ ok: true, value: { dropped: true } })
 		}
@@ -371,6 +377,12 @@ const scope = {
 				gitPanelComponent = component;
 			} else if (definition.name === "sidebar.right.pane.tab.title") {
 				gitPanelTitleComponent = component;
+			} else if (definition.name === "conversation.chat.assistant-actions") {
+				messageActionComponent = component;
+			} else if (definition.name === "sidebar.panellist") {
+				panelListComponent = component;
+			} else if (definition.name === "conversation.view") {
+				conversationViewComponent = component;
 			}
 			return definition;
 		}
@@ -801,6 +813,42 @@ const panelNode = () => findByClass(surface.tree(), "dshgbs-menu")[0];
 	surface.mount(gitPanelTitleComponent, {});
 	const titleTree = surface.tree();
 	assert.ok(textOf(titleTree).includes("Git"), "GitPanel title says Git");
+}
+
+// --- the diff tab can switch from all changes to a message-scoped diff ---
+{
+	const props = registered.inject("session-msg");
+	surface.mount(gitPanelComponent, { sessionId: "session-msg", call: props.call });
+	await surface.settle();
+	const diffTab = findByText(surface.tree(), "Diff").filter((node) => node.props?.onClick !== void 0).pop();
+	assert.ok(diffTab !== void 0, "diff tab exists");
+	diffTab.props.onClick();
+	await surface.settle();
+	const selector = findByClass(surface.tree(), "dshgbs-diff-scope")[0];
+	assert.ok(selector !== void 0, "diff scope selector is rendered");
+	const select = findByClass(surface.tree(), "dshgbs-select")[0];
+	assert.ok(select !== void 0, "message select is rendered");
+	select.props.onChange({ target: { value: "msg-1" } });
+	await surface.settle();
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	await surface.settle();
+	const diffFiles = findByClass(surface.tree(), "dshgbs-file-row");
+	assert.ok(diffFiles.length > 0, "diff file list renders after selecting a message");
+}
+
+// --- the assistant message action, sidebar panel list, and conversation view entries are registered ---
+{
+	assert.ok(messageActionComponent !== void 0, "assistant message action component is registered");
+	assert.ok(panelListComponent !== void 0, "sidebar panel list component is registered");
+	assert.ok(conversationViewComponent !== void 0, "conversation view component is registered");
+	surface.mount(messageActionComponent, { sessionId: "session-msg", messageId: "msg-1", sidebarRight: { openTab: () => {} } });
+	await surface.settle();
+	const actionButton = findByClass(surface.tree(), "dshgbs-message-action")[0];
+	assert.ok(actionButton !== void 0, "assistant message action renders a button");
+	surface.mount(panelListComponent, { sidebarRight: { openTab: () => {} } });
+	await surface.settle();
+	const panelButton = findByClass(surface.tree(), "dshgbs-panel-icon")[0];
+	assert.ok(panelButton !== void 0, "sidebar panel list renders an icon button");
 }
 
 // --- the shipped locale files match the inline dictionaries ---

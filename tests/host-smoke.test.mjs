@@ -23,7 +23,7 @@ const subprocess = {
 		spawns.inFlight += 1;
 		spawns.maxInFlight = Math.max(spawns.maxInFlight, spawns.inFlight);
 		spawns.argv.push(spec.argv.slice(1));
-		const child = spawn(spec.argv[0], spec.argv.slice(1), { cwd: spec.cwd, shell: false });
+		const child = spawn(spec.argv[0], spec.argv.slice(1), { cwd: spec.cwd, shell: false, env: spec.env });
 		let stdout = "";
 		let stderr = "";
 		child.stdout.on("data", (chunk) => {
@@ -456,7 +456,7 @@ try {
 	const snapshotDiff = await service.diff({ sessionId: "session-1", from: before.snapshotId, to: after.snapshotId });
 	assert.ok(snapshotDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "added"), "diff between snapshots finds the new file");
 	const worktreeDiff = await service.diff({ sessionId: "session-1", from: "HEAD", to: "WORKTREE" });
-	assert.ok(worktreeDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "added"), "diff against WORKTREE finds the new file");
+	assert.ok(worktreeDiff.files.some((row) => row.path === "snapshot-demo.txt" && row.kind === "untracked"), "diff against WORKTREE finds the new untracked file");
 	assert.ok(worktreeDiff.patch.includes("demo content"), "WORKTREE diff patch contains the new content");
 	writeFileSync(join(repository, "untracked-demo.txt"), "untracked content\n");
 	const worktreeWithUntracked = await service.diff({ sessionId: "session-1", from: "HEAD", to: "WORKTREE" });
@@ -469,6 +469,72 @@ try {
 		"empty snapshot id is rejected"
 	);
 	rmSync(join(repository, "snapshot-demo.txt"), { force: true });
+
+	// --- message-scoped diff: capture before/after snapshots per user message ---
+	execFileSync("git", ["checkout", "main"], { cwd: repository, stdio: "ignore" });
+	const msgBefore = await service.snapshot({ sessionId: "session-msg", messageId: "msg-1", phase: "before", label: "user asks for feature" });
+	writeFileSync(join(repository, "message-demo.txt"), "message content\n");
+	const msgAfter = await service.snapshot({ sessionId: "session-msg", messageId: "msg-1", phase: "after", label: "model implements feature" });
+	const msgHistory = await service.messageSnapshots({ sessionId: "session-msg" });
+	assert.equal(msgHistory.sessionId, "session-msg", "messageSnapshots returns the session id");
+	assert.ok(Array.isArray(msgHistory.messages), "messageSnapshots returns a messages array");
+	assert.equal(msgHistory.messages.length, 1, "one message is recorded");
+	assert.equal(msgHistory.messages[0].messageId, "msg-1", "message id is preserved");
+	assert.equal(msgHistory.messages[0].beforeId, msgBefore.snapshotId, "before snapshot id is recorded");
+	assert.equal(msgHistory.messages[0].afterId, msgAfter.snapshotId, "after snapshot id is recorded");
+	const msgDiff = await service.diffMessage({ sessionId: "session-msg", messageId: "msg-1" });
+	assert.ok(msgDiff.files.some((row) => row.path === "message-demo.txt" && row.kind === "added"), "diffMessage finds the file added by the message");
+	assert.ok(msgDiff.patch.includes("message content"), "diffMessage patch contains the new content");
+	rmSync(join(repository, "message-demo.txt"), { force: true });
+	await service.snapshot({ sessionId: "session-msg", messageId: "msg-2", phase: "before", label: "second question" });
+	const msgDiffNoAfter = await service.diffMessage({ sessionId: "session-msg", messageId: "msg-2" });
+	assert.equal(msgDiffNoAfter.files.length, 0, "diffMessage for a message with only a before snapshot and no subsequent changes returns empty files");
+
+	// --- automatic turn snapshots: pre-step captures the baseline, turn-stopping closes it ---
+	{
+		const listeners = new Map();
+		const eventCtx = {
+			...ctx,
+			on(event, handler) {
+				if (!listeners.has(event)) listeners.set(event, []);
+				listeners.get(event).push(handler);
+				return () => {};
+			}
+		};
+		const auto = new BranchSwitcherService(eventCtx, {});
+		const emit = async (event, payload, next) => {
+			for (const handler of listeners.get(event) ?? []) {
+				return await handler(payload, next);
+			}
+			return await next();
+		};
+		const preStep = listeners.get("agent/pre-step") ?? [];
+		const turnStopping = listeners.get("agent/turn-stopping") ?? [];
+		assert.equal(preStep.length, 1, "the plugin subscribes to agent/pre-step");
+		assert.equal(turnStopping.length, 1, "the plugin subscribes to agent/turn-stopping");
+
+		const decision = { kind: "enter", messages: [{ id: "auto-msg", content: "add a comment please" }] };
+		await preStep[0]({ agent: { id: "session-auto" }, messages: decision.messages, turn: 1, step: 1 }, async () => decision);
+		writeFileSync(join(repository, "auto-demo.txt"), "auto content\n");
+		await turnStopping[0]({ agent: { id: "session-auto" }, turn: 1 });
+
+		const history = await auto.messageSnapshots({ sessionId: "session-auto" });
+		assert.equal(history.messages.length, 1, "the automatic baseline is recorded for the message");
+		assert.equal(history.messages[0].messageId, "auto-msg", "the message id is the user message id");
+		assert.equal(history.messages[0].title, "add a comment please", "the message title comes from the message text");
+		assert.ok(history.messages[0].afterId !== null, "the closing snapshot is recorded");
+		const autoDiff = await auto.diffMessage({ sessionId: "session-auto", messageId: "auto-msg" });
+		assert.ok(autoDiff.files.some((row) => row.path === "auto-demo.txt" && row.kind === "added"), "the automatic diff finds the file the turn produced");
+		assert.ok(autoDiff.patch.includes("auto content"), "the automatic diff patch carries the content");
+		rmSync(join(repository, "auto-demo.txt"), { force: true });
+
+		// A second turn in the same session keeps its own baseline.
+		const secondDecision = { kind: "enter", messages: [{ id: "auto-msg-2", content: "second question" }] };
+		await preStep[0]({ agent: { id: "session-auto" }, messages: secondDecision.messages, turn: 2, step: 1 }, async () => secondDecision);
+		await turnStopping[0]({ agent: { id: "session-auto" }, turn: 2 });
+		const secondHistory = await auto.messageSnapshots({ sessionId: "session-auto" });
+		assert.equal(secondHistory.messages.length, 2, "the second turn adds its own message");
+	}
 
 	console.log("host smoke test: ok");
 } finally {

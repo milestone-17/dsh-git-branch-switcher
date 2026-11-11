@@ -1,3 +1,35 @@
+# v0.9.0 — 消息级 diff + 多入口（助手消息按钮 / 侧边栏图标 / 对话视图标签页）
+
+## 改进 / Improvements
+
+- **消息级 diff（这次改了什么，一眼看清）**
+  - 宿主自动在**每轮对话**开始前与结束时各拍一张工作区快照（订阅 `agent/pre-step` 与 `agent/turn-stopping`），不再需要手动操作；
+  - 右侧 Git 面板「变更」标签页新增**消息下拉选择器**，可按消息筛选，只看**这一条消息**让模型改了什么；
+  - 模型回复旁新增 **Git 图标按钮**，点一下直接打开该消息的 diff；
+  - 消息列表标题取自用户消息正文（截断到 60 字），不再是难认的 id；
+  - 某条消息若没有快照（插件启用前发出、或当前目录不是 git 仓库），自动退回「全部变更」并提示原因，不再报错。
+- **多个入口，哪个顺手从哪个进**
+  - 输入框工具行胶囊（原有）
+  - 右侧边栏 Git 标签页（原有）
+  - **左侧边栏面板列表新增 Git 图标**，点击直达 Git 面板
+  - **对话视图新增「Git」标签页**，可在对话区里直接操作
+  - **助手消息操作按钮**，直达该条消息的变更
+- **顺带修掉两个底层问题**
+  - 快照命令现在会继承完整环境变量，`GIT_INDEX_FILE` 正确生效，快照不再污染真实暂存区；
+  - 「某棵树 vs 工作区」的 diff 改为以该树为基准，而不是以 HEAD 为基准 —— 消息级 diff 因此只报告本轮真正新增的改动。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+```
+
+或无需 git 的 tarball：`https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz`
+
+> 装完需完全重启 DeepSeek Harness 应用（Host 半包随应用加载）。
+
+---
+
 # v0.8.3 — Git 面板质感升级（毛玻璃、圆角、合并流程可视化）
 
 ## 改进 / Improvements
