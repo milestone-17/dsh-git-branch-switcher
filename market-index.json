@@ -26,8 +26,8 @@
         "zh": "Git 分支切换器"
       },
       "description": {
-        "en": "Keep your git workflow inside the chat. A composer chip shows the current branch at a glance; the TRAE-style popup (or a docked side panel) lets you switch or create branches, fetch remotes, commit & push a subset of changes, merge branches with a clear source → target flow, stash / restore partial changes, and inspect diffs — all without leaving DeepSeek Harness. Popovers dock above the composer so your draft stays visible, and the change list opens instantly.",
-        "zh": "让 git 操作不离开 DSH 聊天窗口。输入框工具行的胶囊实时显示当前分支；TRAE 风格弹层（或可停靠的右侧侧栏）一键切换/新建分支、同步远端、勾选改动提交推送、按来源 → 目标流向合并分支、暂存与恢复部分改动、查看工作区 diff。所有面板停靠在输入框上方，不遮挡草稿；改动列表秒开，工作区不干净时先确认再操作。"
+        "en": "Keep your git workflow inside the chat. A composer chip shows the current branch at a glance; the TRAE-style popup (or a docked side panel) lets you switch or create branches, fetch remotes, commit & push a subset of changes, merge branches with a clear source → target flow, stash / restore partial changes, and inspect diffs — all without leaving DeepSeek Harness. Every turn is snapshotted automatically, so you can see exactly what a single message changed. Popovers dock above the composer so your draft stays visible, and the change list opens instantly.",
+        "zh": "让 git 操作不离开 DSH 聊天窗口。输入框工具行的胶囊实时显示当前分支；TRAE 风格弹层（或可停靠的右侧侧栏）一键切换/新建分支、同步远端、勾选改动提交推送、按来源 → 目标流向合并分支、暂存与恢复部分改动、查看工作区 diff。每轮对话自动留快照，可精确查看某一条消息改了哪些文件。所有面板停靠在输入框上方，不遮挡草稿；改动列表秒开，工作区不干净时先确认再操作。"
       },
       "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJub25lIj4KICA8cGF0aCBkPSJNNC41IDJhMiAyIDAgMSAwIC45IDMuNzlBMiAyIDAgMCAwIDQuNSAyWm0wIDQuNnYyLjhhMy42IDMuNiAwIDAgMCAzLjYgMy42aC40YTIgMiAwIDEgMCAwLTEuMmgtLjRhMi40IDIuNCAwIDAgMS0yLjQtMi40VjYuNmEyIDIgMCAxIDAtMS4yIDBaTTExLjUgOS40YTIgMiAwIDEgMCAuOS4yMUEyIDIgMCAwIDAgMTEuNSA5LjRaIiBmaWxsPSJjdXJyZW50Q29sb3IiLz4KPC9zdmc+Cg==",
       "author": "LuoBiao (milestone-17)",
@@ -47,8 +47,20 @@
       },
       "versions": [
         {
+          "version": "0.9.0",
+          "publishTimestamp": 1794362089,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
+            "commit": "b81c43a15cd54d950d630a6b9be81eb8bbba5609"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.2 <0.3.0 || >=0.3.0-rc.1 <0.4.0-0"
+          }
+        },
+        {
           "version": "0.8.3",
-          "publishTimestamp": 1794297586,
+          "publishTimestamp": 1794287899,
           "source": {
             "type": "git",
             "url": "https://github.com/milestone-17/dsh-git-branch-switcher",
