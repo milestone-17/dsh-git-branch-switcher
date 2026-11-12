@@ -25,8 +25,8 @@ node tests/client-smoke.test.mjs
 
 # 3. 打包（两个文件名都要）
 npm pack --pack-destination dist
-cp dist/luochbiao-dsh-git-branch-switcher-0.3.0.tgz dist/dsh-git-branch-switcher-0.3.0.tgz
-cp dist/luochbiao-dsh-git-branch-switcher-0.3.0.tgz dist/dsh-git-branch-switcher.tgz
+cp dist/milestone-l-dsh-git-branch-switcher-0.3.0.tgz dist/dsh-git-branch-switcher-0.3.0.tgz
+cp dist/milestone-l-dsh-git-branch-switcher-0.3.0.tgz dist/dsh-git-branch-switcher.tgz
 
 # 4. 提交并推 tag
 git add -A && git commit -m "release: v0.3.0"
@@ -40,6 +40,9 @@ gh release create v0.3.0 \
 
 # 6. 更新 market-index.json（版本号 / publishTimestamp / source.commit）
 #    publishTimestamp = 当前 Unix 秒：date +%s
+
+# 7. 发到 npm（用 token，不要用账号密码）
+npm publish --registry=https://registry.npmjs.org/
 ```
 
 ## 别忘了

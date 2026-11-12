@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-	id: "@luochbiao/dsh-git-branch-switcher",
+	id: "@milestone-l/dsh-git-branch-switcher",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;
@@ -404,7 +404,7 @@ window.__ModuleLoader__.load({
 		let $diff_result$value;
 		const changesRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#ChangesRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#ChangesRequest",
 			create: $changes_request,
 			jsonSchema: {
 				type: "object",
@@ -418,7 +418,7 @@ window.__ModuleLoader__.load({
 		});
 		const changesRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#ChangesRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#ChangesRequest",
 			create: $changes_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -432,7 +432,7 @@ window.__ModuleLoader__.load({
 		});
 		const snapshotRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#SnapshotRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#SnapshotRequest",
 			create: $snapshot_request,
 			jsonSchema: {
 				type: "object",
@@ -446,7 +446,7 @@ window.__ModuleLoader__.load({
 		});
 		const snapshotRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#SnapshotRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#SnapshotRequest",
 			create: $snapshot_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -460,7 +460,7 @@ window.__ModuleLoader__.load({
 		});
 		const diffRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#DiffRequest",
 			create: $diff_request,
 			jsonSchema: {
 				type: "object",
@@ -475,7 +475,7 @@ window.__ModuleLoader__.load({
 		});
 		const diffRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#DiffRequest",
 			create: $diff_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -490,7 +490,7 @@ window.__ModuleLoader__.load({
 		});
 		const messageSnapshotsRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MessageSnapshotsRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#MessageSnapshotsRequest",
 			create: $message_snapshots_request,
 			jsonSchema: {
 				type: "object",
@@ -503,7 +503,7 @@ window.__ModuleLoader__.load({
 		});
 		const messageSnapshotsRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MessageSnapshotsRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#MessageSnapshotsRequest",
 			create: $message_snapshots_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -516,7 +516,7 @@ window.__ModuleLoader__.load({
 		});
 		const diffMessageRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffMessageRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#DiffMessageRequest",
 			create: $diff_message_request,
 			jsonSchema: {
 				type: "object",
@@ -530,7 +530,7 @@ window.__ModuleLoader__.load({
 		});
 		const diffMessageRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffMessageRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#DiffMessageRequest",
 			create: $diff_message_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -544,7 +544,7 @@ window.__ModuleLoader__.load({
 		});
 		const pushRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#PushRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#PushRequest",
 			create: $push_request,
 			jsonSchema: {
 				type: "object",
@@ -560,7 +560,7 @@ window.__ModuleLoader__.load({
 		});
 		const pushRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#PushRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#PushRequest",
 			create: $push_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -576,7 +576,7 @@ window.__ModuleLoader__.load({
 		});
 		const mergeRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MergeRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#MergeRequest",
 			create: $merge_request,
 			jsonSchema: {
 				type: "object",
@@ -592,7 +592,7 @@ window.__ModuleLoader__.load({
 		});
 		const mergeRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MergeRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#MergeRequest",
 			create: $merge_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -608,7 +608,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashListRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashListRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashListRequest",
 			create: $stash_list_request,
 			jsonSchema: {
 				type: "object",
@@ -619,7 +619,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashListRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashListRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashListRequest",
 			create: $stash_list_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -630,7 +630,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashRequest",
 			create: $stash_request,
 			jsonSchema: {
 				type: "object",
@@ -646,7 +646,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashRequest",
 			create: $stash_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -662,7 +662,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashApplyRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashApplyRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashApplyRequest",
 			create: $stash_apply_request,
 			jsonSchema: {
 				type: "object",
@@ -678,7 +678,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashApplyRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashApplyRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashApplyRequest",
 			create: $stash_apply_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -694,7 +694,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashDropRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashDropRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashDropRequest",
 			create: $stash_drop_request,
 			jsonSchema: {
 				type: "object",
@@ -709,7 +709,7 @@ window.__ModuleLoader__.load({
 		});
 		const stashDropRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StashDropRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StashDropRequest",
 			create: $stash_drop_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -724,7 +724,7 @@ window.__ModuleLoader__.load({
 		});
 		const statusRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StatusRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StatusRequest",
 			create: $status_request,
 			jsonSchema: {
 				type: "object",
@@ -735,7 +735,7 @@ window.__ModuleLoader__.load({
 		});
 		const statusRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#StatusRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#StatusRequest",
 			create: $status_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -746,7 +746,7 @@ window.__ModuleLoader__.load({
 		});
 		const checkoutRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CheckoutRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#CheckoutRequest",
 			create: $checkout_request,
 			jsonSchema: {
 				type: "object",
@@ -761,7 +761,7 @@ window.__ModuleLoader__.load({
 		});
 		const checkoutRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CheckoutRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#CheckoutRequest",
 			create: $checkout_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -776,7 +776,7 @@ window.__ModuleLoader__.load({
 		});
 		const createRequestCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CreateRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#CreateRequest",
 			create: $create_request,
 			jsonSchema: {
 				type: "object",
@@ -792,7 +792,7 @@ window.__ModuleLoader__.load({
 		});
 		const createRequestStrictCodec = () => ({
 			mode: "strict",
-			typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#CreateRequest",
+			typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#CreateRequest",
 			create: $create_request_strict,
 			jsonSchema: {
 				type: "object",
@@ -807,7 +807,7 @@ window.__ModuleLoader__.load({
 			}
 		});
 		const TYPERT_REMOTE = createTypertRemoteInfo({
-			package: "@luochbiao/dsh-git-branch-switcher",
+			package: "@milestone-l/dsh-git-branch-switcher",
 			methods: {
 				"branchSwitcher/status": {
 					service: "branchSwitcher",
@@ -823,7 +823,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStatus",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchStatus",
 						create: $status_result,
 						description: "repository presence, current branch, branch rows, and uncommitted-change count.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -845,7 +845,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchCheckout",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchCheckout",
 						create: $checkout_result,
 						description: "a confirmation request, or the repository state after the switch.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -867,7 +867,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchFetch",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchFetch",
 						create: $fetch_result,
 						description: "the refreshed repository state after a successful git fetch.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -889,7 +889,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchCreate",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchCreate",
 						create: $create_result,
 						description: "a confirmation request, or the repository state after the new branch was created and checked out.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -909,7 +909,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchChanges",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchChanges",
 						create: $status_result,
 						description: "typed change rows, the unpushed count, and optionally the inferred merge target.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -929,7 +929,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#SnapshotResult",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#SnapshotResult",
 						create: $snapshot_result,
 						description: "the snapshot id and timestamp.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -949,7 +949,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffResult",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#DiffResult",
 						create: $diff_result,
 						description: "file list with change kinds and the unified diff patch.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -969,7 +969,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#MessageSnapshotsResult",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#MessageSnapshotsResult",
 						create: $message_snapshots_result,
 						description: "sessions and user messages with before/after snapshot ids.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -989,7 +989,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#DiffResult",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#DiffResult",
 						create: $diff_result,
 						description: "file list with change kinds and the unified diff patch.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1009,7 +1009,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchPush",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchPush",
 						create: $status_result,
 						description: "the pushed branch, upstream, and trimmed push output.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1029,7 +1029,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchMerge",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchMerge",
 						create: $status_result,
 						description: "a confirmation request, the merge result, or the conflict listing.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1049,7 +1049,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchMergeAbort",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchMergeAbort",
 						create: $fetch_result,
 						description: "the refreshed repository state after the merge was aborted.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1069,7 +1069,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStashList",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchStashList",
 						create: $status_result,
 						description: "stash rows with reference, message, branch, file paths, and date.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1089,7 +1089,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStash",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchStash",
 						create: $status_result,
 						description: "the created stash reference, the stashed path count, and the branch.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1109,7 +1109,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStashApply",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchStashApply",
 						create: $status_result,
 						description: "a confirmation request, the applied reference, or the conflict listing.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1129,7 +1129,7 @@ window.__ModuleLoader__.load({
 					cancellation: { parameter: "signal" },
 					result: {
 						mode: "strict",
-						typeSymbol: "@luochbiao/dsh-git-branch-switcher/types#BranchStashDrop",
+						typeSymbol: "@milestone-l/dsh-git-branch-switcher/types#BranchStashDrop",
 						create: $status_result,
 						description: "whether the entry was dropped.",
 						jsonSchema: { type: "object", additionalProperties: true }
@@ -1620,7 +1620,7 @@ window.__ModuleLoader__.load({
 			if (document.getElementById(STYLE_ID) !== null) return;
 			const style = document.createElement("style");
 			style.id = STYLE_ID;
-			style.setAttribute("data-plugin", "@luochbiao/dsh-git-branch-switcher");
+			style.setAttribute("data-plugin", "@milestone-l/dsh-git-branch-switcher");
 			style.textContent = CSS;
 			document.head.append(style);
 		};

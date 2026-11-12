@@ -20,7 +20,7 @@
   },
   "plugins": [
     {
-      "name": "@luochbiao/dsh-git-branch-switcher",
+      "name": "@milestone-l/dsh-git-branch-switcher",
       "title": {
         "en": "Git Branch Switcher",
         "zh": "Git 分支切换器"

@@ -8,7 +8,7 @@
 [![license](https://img.shields.io/github/license/milestone-17/dsh-git-branch-switcher?label=license)](./LICENSE)
 [![stars](https://img.shields.io/github/stars/milestone-17/dsh-git-branch-switcher?style=flat&label=stars)](https://github.com/milestone-17/dsh-git-branch-switcher/stargazers)
 ![DSH](https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2f6feb?logo=deepseek&logoColor=white)
-[![listed on dsh.works](https://img.shields.io/badge/listed_on-dsh.works-00c2e9?labelColor=0d0d0d)](https://dsh.works/awesome-dsh-plugins/)
+[![npm](https://img.shields.io/npm/v/@milestone-l/dsh-git-branch-switcher?label=npm)](https://www.npmjs.com/package/@milestone-l/dsh-git-branch-switcher)
 
 ![Icon](./icon.svg)
 
@@ -86,7 +86,13 @@ dsh plugin --profile desktop install git+https://ghproxy.net/https://github.com/
 dsh plugin --profile desktop install git+https://gitclone.com/github.com/milestone-17/dsh-git-branch-switcher.git
 ```
 
-### 方式二：预构建包（无需 git）
+### 方式二：npm
+
+```bash
+dsh plugin --profile desktop add npm:@milestone-l/dsh-git-branch-switcher
+```
+
+### 方式三：预构建包（无需 git）
 
 [Release 页面](https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest) 附带预构建包：
 
@@ -95,10 +101,10 @@ dsh plugin --profile desktop install git+https://gitclone.com/github.com/milesto
 dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/latest/download/dsh-git-branch-switcher.tgz
 
 # 或钉住当前版本
-dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.8.3/dsh-git-branch-switcher-0.8.3.tgz
+dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-switcher/releases/download/v0.9.0/dsh-git-branch-switcher-0.9.0.tgz
 ```
 
-### 方式三：市场索引
+### 方式四：市场索引
 
 本仓库自带 `market-index.json`（DSH 官方格式，format-1），部署到任意静态地址后在插件页「发现」里添加该 URL，即可在市场里看到并一键安装：
 
@@ -106,7 +112,7 @@ dsh plugin --profile desktop add https://github.com/milestone-17/dsh-git-branch-
 https://ghproxy.net/https://raw.githubusercontent.com/milestone-17/dsh-git-branch-switcher/master/market-index.json
 ```
 
-### 方式四：本地目录安装
+### 方式五：本地目录安装
 
 ```bash
 dsh plugin --profile desktop install /path/to/dsh-git-branch-switcher

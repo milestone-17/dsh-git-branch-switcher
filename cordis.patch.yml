@@ -1,4 +1,4 @@
 - insert:
     - id: branch-switcher
-      name: '@luochbiao/dsh-git-branch-switcher'
+      name: '@milestone-l/dsh-git-branch-switcher'
       config: {}

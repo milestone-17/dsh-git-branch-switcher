@@ -264,7 +264,7 @@ function loadPlugin(requireImpl) {
 	const source = readFileSync(join(here, "..", "client.js"), "utf8");
 	new Function(source)();
 	assert.ok(registration !== void 0, "client.js registered a module factory");
-	assert.equal(registration.id, "@luochbiao/dsh-git-branch-switcher");
+	assert.equal(registration.id, "@milestone-l/dsh-git-branch-switcher");
 	return registration.factory(requireImpl);
 }
 

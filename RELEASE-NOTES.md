@@ -1,3 +1,30 @@
+# v0.9.1 — 包名统一为 @milestone-l/dsh-git-branch-switcher
+
+## 改进 / Improvements
+
+- **npm 包名与实际发布名对齐**：包名从 `@luochbiao/dsh-git-branch-switcher` 统一为 **`@milestone-l/dsh-git-branch-switcher`**（与 npm 上已发布的版本一致）。
+  - 同步更新：`package.json`、`cordis.patch.yml`、`client.js`（Typert 协议标识符）、`market-index.json`、README 与测试断言。
+- **README 新增 npm 安装方式**：
+  ```bash
+  dsh plugin --profile desktop add npm:@milestone-l/dsh-git-branch-switcher
+  ```
+- **移除不实的徽章**：原先挂的 `listed on dsh.works` 徽章已删除 —— 该索引中并没有收录本插件；换成指向真实 npm 包的版本徽章。
+
+## 升级提示 / Upgrade note
+
+- 首次安装或升级后需**完全重启 DeepSeek Harness 应用**，宿主半包与客户端半包都会随应用加载。
+- 桌面 profile 若以 `link:` 方式指向本仓库，需要把依赖名一并改为 `@milestone-l/dsh-git-branch-switcher` 后重新 `pnpm install`。
+
+## 安装 / Install
+
+```bash
+dsh plugin --profile desktop add github:milestone-17/dsh-git-branch-switcher
+# 或
+dsh plugin --profile desktop add npm:@milestone-l/dsh-git-branch-switcher
+```
+
+---
+
 # v0.9.0 — 消息级 diff + 多入口（助手消息按钮 / 侧边栏图标 / 对话视图标签页）
 
 ## 改进 / Improvements
